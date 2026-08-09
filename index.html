@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Live API Test</title>
+
+<style>
+body {
+    background:#111;
+    color:#fff;
+    font-family:Arial,sans-serif;
+    padding:20px;
+}
+
+h1 { color:#58a6ff; }
+
+button {
+    background:#238636;
+    color:white;
+    border:0;
+    padding:10px 15px;
+    border-radius:6px;
+    cursor:pointer;
+    margin:5px;
+}
+
+.match {
+    background:#1c2128;
+    border:1px solid #30363d;
+    padding:15px;
+    margin:10px 0;
+    border-radius:8px;
+}
+
+.live {
+    color:#ff4d4d;
+    font-weight:bold;
+}
+
+#video {
+    width:100%;
+    max-width:800px;
+    background:#000;
+    margin-top:20px;
+}
+
+#log {
+    background:#000;
+    padding:10px;
+    white-space:pre-wrap;
+    word-break:break-all;
+    margin-top:20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⚽ Football Live Stream API</h1>
+
+<button onclick="loadMatches()">🔄 تحميل المباريات</button>
+
+<div id="matches">اضغط تحميل المباريات</div>
+
+<video id="video" controls playsinline></video>
+
+<div id="log"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+
+// تم تحديث المفتاح ليطابق المفتاح الموجود في مثال curl
+const API_KEY = "ceb4752baemsh66f9c20d13e570dp11cb61jsn8bd1cc4c986f";
+const HOST = "football-live-stream-api.p.rapidapi.com";
+
+const headers = {
+    "Content-Type": "application/json",
+    "x-rapidapi-host": HOST,
+    "x-rapidapi-key": API_KEY
+};
+
+const matchesDiv = document.getElementById("matches");
+const log = document.getElementById("log");
+const video = document.getElementById("video");
+
+function showLog(data) {
+    log.textContent =
+        typeof data === "string"
+        ? data
+        : JSON.stringify(data, null, 2);
+}
+
+
+async function loadMatches() {
+
+    matchesDiv.innerHTML = "⏳ جاري تحميل المباريات...";
+
+    try {
+
+        const response = await fetch(
+            "https://" + HOST + "/all-match",
+            { headers }
+        );
+
+        const text = await response.text();
+
+        console.log("ALL MATCH RESPONSE:", text);
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            data = text;
+        }
+
+        showLog(data);
+
+        let matches = [];
+
+        if (Array.isArray(data)) {
+            matches = data;
+        }
+        else if (data.matches) {
+            matches = data.matches;
+        }
+        else if (data.data) {
+            matches = Array.isArray(data.data)
+                ? data.data
+                : [];
+        }
+        else if (data.results) {
+            matches = data.results;
+        }
+
+        if (!matches.length) {
+
+            matchesDiv.innerHTML =
+                "<p>❌ لم يتم العثور على مباريات.</p>" +
+                "<p>انظر الرد الكامل بالأسفل.</p>";
+
+            return;
+        }
+
+        matchesDiv.innerHTML = "";
+
+        matches.forEach(match => {
+
+            const id =
+                match.id ||
+                match.match_id ||
+                match.matchId;
+
+            const home =
+                match.home ||
+                match.home_team ||
+                match.homeTeam ||
+                match.team1 ||
+                "الفريق الأول";
+
+            const away =
+                match.away ||
+                match.away_team ||
+                match.awayTeam ||
+                match.team2 ||
+                "الفريق الثاني";
+
+            const status =
+                match.status ||
+                match.state ||
+                "";
+
+            const div = document.createElement("div");
+
+            div.className = "match";
+
+            div.innerHTML = `
+                <h3>${home} 🆚 ${away}</h3>
+
+                <div>
+                    ${status ? "الحالة: " + status : ""}
+                </div>
+
+                <div>
+                    ID: ${id || "غير موجود"}
+                </div>
+
+                <button>
+                    🎥 الحصول على البث
+                </button>
+            `;
+
+            div.querySelector("button").onclick =
+                () => getStream(id);
+
+            matchesDiv.appendChild(div);
+
+        });
+
+    } catch (error) {
+
+        matchesDiv.innerHTML =
+            "❌ خطأ: " + error.message;
+
+        showLog(error.stack || error.message);
+    }
+}
+
+
+async function getStream(id) {
+
+    if (!id) {
+        alert("لا يوجد ID للمباراة");
+        return;
+    }
+
+    log.textContent =
+        "⏳ جاري الحصول على رابط البث...";
+
+    try {
+
+        const response = await fetch(
+            "https://" + HOST + "/link/" +
+            encodeURIComponent(id),
+            { headers }
+        );
+
+        const text = await response.text();
+
+        console.log("STREAM RESPONSE:", text);
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            data = text;
+        }
+
+        showLog(data);
+
+        const streamUrl = findUrl(data);
+
+        if (!streamUrl) {
+
+            alert(
+                "❌ لم يتم العثور على رابط بث في الرد"
+            );
+
+            return;
+        }
+
+        console.log("STREAM URL:", streamUrl);
+
+        playStream(streamUrl);
+
+    } catch (error) {
+
+        showLog(error.stack || error.message);
+
+        alert(
+            "❌ فشل الحصول على البث: " +
+            error.message
+        );
+    }
+}
+
+
+function findUrl(data) {
+
+    if (typeof data === "string") {
+
+        if (
+            data.includes(".m3u8") ||
+            data.startsWith("http")
+        ) {
+            return data;
+        }
+
+        return null;
+    }
+
+    if (!data || typeof data !== "object")
+        return null;
+
+    const possibleKeys = [
+        "url",
+        "stream_url",
+        "streamUrl",
+        "link",
+        "stream",
+        "m3u8",
+        "m3u8_url",
+        "play_url",
+        "playUrl"
+    ];
+
+    for (const key of possibleKeys) {
+
+        if (
+            typeof data[key] === "string" &&
+            data[key].startsWith("http")
+        ) {
+            return data[key];
+        }
+    }
+
+    for (const value of Object.values(data)) {
+
+        const result = findUrl(value);
+
+        if (result)
+            return result;
+    }
+
+    return null;
+}
+
+
+function playStream(url) {
+
+    video.pause();
+
+    video.removeAttribute("src");
+
+    if (
+        url.includes(".m3u8") &&
+        Hls.isSupported()
+    ) {
+
+        const hls = new Hls();
+
+        hls.loadSource(url);
+
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+
+            video.play().catch(() => {});
+
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+
+            console.log("HLS ERROR:", data);
+
+        });
+
+    }
+
+    else if (
+        video.canPlayType(
+            "application/vnd.apple.mpegurl"
+        )
+    ) {
+
+        video.src = url;
+
+        video.play().catch(() => {});
+
+    }
+
+    else {
+
+        video.src = url;
+
+        video.play().catch(() => {});
+
+    }
+}
+
+</script>
+
+</body>
+</html>
