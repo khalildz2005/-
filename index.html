@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚽ Football Live Stream API Tester</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest">
+    </script>
     <style>
         :root {
             --bg: #0a0e14;
@@ -119,11 +120,6 @@
         .btn-primary:hover {
             background: #2b8ae0;
             border-color: #2b8ae0;
-        }
-        .btn-danger {
-            background: var(--red);
-            border-color: var(--red);
-            color: #fff;
         }
         .btn-sm {
             padding: 7px 14px;
@@ -513,6 +509,7 @@
             gap: 8px;
             margin-top: 8px;
             flex-wrap: wrap;
+            align-items: center;
         }
         .diag-details {
             background: #0d1117;
@@ -547,7 +544,6 @@
             ⚠️ تنبيه: وضع RapidAPI Key داخل HTML يعني أن المفتاح مرئي في المتصفح. هذا للاختبار فقط وليس لإنتاج Backend.
         </div>
 
-        <!-- Stats -->
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card api-loading" id="statApiStatus"><div class="value">🟡</div><div class="label">حالة API</div></div>
             <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">إجمالي المباريات</div></div>
@@ -557,7 +553,6 @@
             <div class="stat-card"><div class="value" id="statLastUpdate">-</div><div class="label">آخر تحديث</div></div>
         </div>
 
-        <!-- Toolbar -->
         <div class="toolbar">
             <input type="text" id="searchInput" placeholder="🔍 بحث عن فريق، بطولة، ID...">
             <select id="filterStatus">
@@ -585,13 +580,11 @@
             <span id="refreshSpinner" style="display:none;" class="spinner"></span>
         </div>
 
-        <!-- Matches Section -->
         <div class="section-title">📋 المباريات</div>
         <div class="matches-grid" id="matchesGrid">
             <div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">اضغط 🔄 تحديث المباريات أو انتظر التحميل التلقائي...</div>
         </div>
 
-        <!-- Diagnostics -->
         <div class="section-title">🔧 API Diagnostics</div>
         <div class="diagnostics-grid">
             <div class="diag-card" id="diagAllMatch">
@@ -610,7 +603,6 @@
             </div>
         </div>
 
-        <!-- JSON Viewer -->
         <div class="section-title">📦 Raw API Response</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
             <button class="btn btn-sm" id="showAllMatchJson">عرض /all-match JSON</button>
@@ -621,17 +613,14 @@
         <div class="json-viewer" id="jsonViewer">لا يوجد بيانات بعد. اضغط على زر لعرض JSON.</div>
     </div>
 
-    <!-- Modal -->
     <div class="modal-overlay" id="modalOverlay" style="display:none;">
         <div class="modal" id="modalContent"></div>
     </div>
 
-    <!-- Toast container -->
     <div id="toastContainer"></div>
 
     <script>
         (function() {
-            // --- State ---
             const API_BASE = 'https://football-live-stream-api.p.rapidapi.com';
             const API_HOST = 'football-live-stream-api.p.rapidapi.com';
             let rapidApiKey = localStorage.getItem('fb_stream_key') || '';
@@ -647,10 +636,7 @@
             let rateLimitActive = false;
             let rateLimitUntil = 0;
 
-            // --- DOM refs ---
             const $ = (sel) => document.querySelector(sel);
-            const $$ = (sel) => document.querySelectorAll(sel);
-
             const apiKeyInput = $('#apiKeyInput');
             const saveKeyBtn = $('#saveKeyBtn');
             const testConnBtn = $('#testConnBtn');
@@ -666,9 +652,7 @@
             const modalContent = $('#modalContent');
             const jsonViewer = $('#jsonViewer');
             const toastContainer = $('#toastContainer');
-            const warningBox = $('#warningBox');
 
-            // Stats
             const statApiStatus = $('#statApiStatus');
             const statTotal = $('#statTotal');
             const statLive = $('#statLive');
@@ -676,7 +660,6 @@
             const statUpcoming = $('#statUpcoming');
             const statLastUpdate = $('#statLastUpdate');
 
-            // Diag
             const diagAllStatus = $('#diagAllStatus');
             const diagAllTime = $('#diagAllTime');
             const diagAllCount = $('#diagAllCount');
@@ -686,7 +669,6 @@
             const diagLinkFound = $('#diagLinkFound');
             const diagLinkConn = $('#diagLinkConn');
 
-            // --- Init ---
             if (rapidApiKey) {
                 apiKeyInput.value = rapidApiKey;
                 updateKeyStatus();
@@ -694,8 +676,7 @@
 
             function updateKeyStatus() {
                 if (rapidApiKey) {
-                    const masked = rapidApiKey.length > 8 ?
-                        '*'.repeat(rapidApiKey.length - 4) + rapidApiKey.slice(-4) :
+                    const masked = rapidApiKey.length > 8 ? '*'.repeat(rapidApiKey.length - 4) + rapidApiKey.slice(-4) :
                         '****';
                     keyStatus.textContent = '✅ محفوظ: ' + masked;
                     keyStatus.style.color = 'var(--green)';
@@ -705,7 +686,6 @@
                 }
             }
 
-            // --- Toast ---
             function showToast(msg, duration = 3000) {
                 const t = document.createElement('div');
                 t.className = 'toast';
@@ -714,18 +694,15 @@
                 setTimeout(() => t.remove(), duration);
             }
 
-            // --- Console safe logging ---
             function safeLog(...args) {
                 const sanitized = args.map(a => {
-                    if (typeof a === 'string' && a.includes(rapidApiKey) && rapidApiKey.length > 4) {
-                        return a.replace(rapidApiKey, '***REDACTED***');
-                    }
+                    if (typeof a === 'string' && a.includes(rapidApiKey) && rapidApiKey.length > 4) return a.replace(
+                        rapidApiKey, '***REDACTED***');
                     return a;
                 });
                 console.log(...sanitized);
             }
 
-            // --- Headers ---
             function getHeaders() {
                 return {
                     'x-rapidapi-host': API_HOST,
@@ -734,7 +711,6 @@
                 };
             }
 
-            // --- Rate limit check ---
             function checkRateLimit() {
                 if (rateLimitActive && Date.now() < rateLimitUntil) {
                     const remain = Math.ceil((rateLimitUntil - Date.now()) / 1000);
@@ -754,12 +730,10 @@
                 rateLimitUntil = Date.now() + retryAfterSec * 1000;
                 stopAutoRefresh();
                 autoRefreshSelect.value = 'off';
-                showToast('⚠️ تم تجاوز حد الطلبات (HTTP 429). تم إيقاف التحديث التلقائي. انتظر ' + retryAfterSec +
-                    ' ثانية.', 6000);
+                showToast('⚠️ تم تجاوز حد الطلبات (HTTP 429). تم إيقاف التحديث التلقائي.', 6000);
                 updateApiStatusBadge('rate_limited');
             }
 
-            // --- API Status Badge ---
             function updateApiStatusBadge(state) {
                 statApiStatus.classList.remove('api-ok', 'api-err', 'api-loading');
                 if (state === 'ok') {
@@ -781,7 +755,6 @@
                 }
             }
 
-            // --- Flexible JSON parser ---
             function extractMatchesArray(data) {
                 if (Array.isArray(data)) return data;
                 if (data && typeof data === 'object') {
@@ -789,10 +762,6 @@
                             'body'
                         ]) {
                         if (Array.isArray(data[key])) return data[key];
-                        if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].data)) return data[
-                            key].data;
-                        if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].matches)) return data[
-                            key].matches;
                     }
                     for (const val of Object.values(data)) {
                         if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
@@ -811,27 +780,19 @@
 
             function detectMatchStatus(match) {
                 if (!match || typeof match !== 'object') return 'unknown';
-                const statusKeys = ['status', 'state', 'match_status', 'live', 'is_live', 'started', 'finished',
-                    'matchState', 'game_status', 'playing'
-                ];
-                for (const key of statusKeys) {
-                    const val = match[key];
-                    if (val === undefined || val === null) continue;
-                    const v = String(val).toLowerCase().trim();
-                    if (['live', 'playing', 'in_play', 'inplay', '1', 'true', 'yes', 'ongoing', 'active'].includes(v))
-                        return 'live';
-                    if (['finished', 'ended', 'completed', 'ft', 'full_time', 'fulltime', '2', 'done'].includes(v))
-                        return 'finished';
-                    if (['scheduled', 'upcoming', 'not_started', 'notstarted', 'pre', '0', 'future', 'pending',
-                            'pre_match'
-                        ].includes(v)) return 'upcoming';
-                    if (v.includes('live') || v.includes('play')) return 'live';
-                    if (v.includes('finish') || v.includes('end') || v.includes('complet')) return 'finished';
-                    if (v.includes('schedul') || v.includes('upcom') || v.includes('not_start')) return 'upcoming';
-                }
-                if (match.live === true || match.is_live === true || match.isLive === true) return 'live';
-                if (match.finished === true || match.ended === true || match.is_finished === true) return 'finished';
-                if ((match.score || match.goals || match.result) && !match.finished && !match.ended) return 'live';
+                const statusVal = match.status || match.state || match.match_status || match.live || match.is_live || match
+                    .started;
+                if (statusVal === undefined || statusVal === null) return 'unknown';
+                const v = String(statusVal).toLowerCase().trim();
+                if (['live', 'playing', 'in_play', 'inplay', '1', 'true', 'yes', 'ongoing', 'active'].includes(v)) return
+                    'live';
+                if (['finished', 'ended', 'completed', 'ft', 'full_time', 'fulltime', '2', 'done'].includes(v)) return
+                    'finished';
+                if (['scheduled', 'upcoming', 'not_started', 'notstarted', 'pre', '0', 'future', 'pending', 'pre_match']
+                    .includes(v)) return 'upcoming';
+                if (v.includes('live') || v.includes('play')) return 'live';
+                if (v.includes('finish') || v.includes('end') || v.includes('complet')) return 'finished';
+                if (v.includes('schedul') || v.includes('upcom') || v.includes('not_start')) return 'upcoming';
                 return 'unknown';
             }
 
@@ -840,16 +801,13 @@
                     'guest'
                 ];
                 for (const p of prefixes) {
-                    for (const suf of ['_name', 'Name', '', '_team']) {
+                    for (const suf of ['_name', 'Name', '']) {
                         const key = p + suf;
                         if (match[key] && typeof match[key] === 'string') return match[key];
-                        if (match[key] && typeof match[key] === 'object' && match[key].name) return match[key].name;
                     }
                 }
                 if (match.home && match.home.name) return match.home.name;
                 if (match.away && match.away.name) return match.away.name;
-                if (match.teams && match.teams.home && match.teams.home.name) return match.teams.home.name;
-                if (match.teams && match.teams.away && match.teams.away.name) return match.teams.away.name;
                 return side === 'home' ? 'الفريق الأول' : 'الفريق الثاني';
             }
 
@@ -858,61 +816,40 @@
                     'guest'
                 ];
                 for (const p of prefixes) {
-                    for (const suf of ['_flag', '_logo', 'Flag', 'Logo', '_image', 'Image']) {
+                    for (const suf of ['_flag', '_logo', 'Flag', 'Logo']) {
                         const key = p + suf;
                         if (match[key] && typeof match[key] === 'string' && match[key].startsWith('http')) return match[
                             key];
                     }
                 }
-                if (match.home && match.home.flag && typeof match.home.flag === 'string') return match.home.flag;
-                if (match.away && match.away.flag && typeof match.away.flag === 'string') return match.away.flag;
-                if (match.teams && match.teams.home && match.teams.home.flag) return match.teams.home.flag;
-                if (match.teams && match.teams.away && match.teams.away.flag) return match.teams.away.flag;
+                if (match.home && match.home.flag) return match.home.flag;
+                if (match.away && match.away.flag) return match.away.flag;
                 return '';
             }
 
             function detectScore(match) {
                 if (match.score && typeof match.score === 'string') return match.score;
-                if (match.score && typeof match.score === 'object') {
-                    const h = match.score.home ?? match.score.team1 ?? match.score.local ?? '-';
-                    const a = match.score.away ?? match.score.team2 ?? match.score.visitor ?? '-';
-                    return `${h} - ${a}`;
-                }
-                const homeGoals = match.home_goals ?? match.homeGoals ?? match.goals_home ?? match.local_goals;
-                const awayGoals = match.away_goals ?? match.awayGoals ?? match.goals_away ?? match.visitor_goals;
-                if (homeGoals !== undefined && awayGoals !== undefined) return `${homeGoals} - ${awayGoals}`;
-                if (match.result && typeof match.result === 'string') return match.result;
                 return null;
             }
 
             function detectTournament(match) {
-                for (const key of ['league', 'tournament', 'competition', 'championship', 'cup', 'event', 'category',
-                        'tournament_name', 'league_name'
-                    ]) {
+                for (const key of ['league', 'tournament', 'competition', 'championship', 'cup']) {
                     if (match[key] && typeof match[key] === 'string') return match[key];
-                    if (match[key] && typeof match[key] === 'object' && match[key].name) return match[key].name;
                 }
                 return 'غير معروف';
             }
 
             function detectMatchTime(match) {
-                for (const key of ['kickoff', 'time', 'match_time', 'kick_off', 'start_time', 'datetime', 'date_time',
-                        'scheduled'
-                    ]) {
+                for (const key of ['kickoff', 'time', 'match_time', 'start_time', 'datetime']) {
                     if (match[key] && typeof match[key] === 'string') return match[key];
                 }
-                if (match.date) return match.date;
                 return null;
             }
 
-            // --- استخراج رابط البث الحقيقي (M3U8) من الاستجابة ---
             function extractRealStreamUrl(data) {
                 if (!data || typeof data !== 'object') return null;
-                // 1. تحقق من وجود حقل "url"
-                let rawUrl = data.url || data.stream_url || data.link || data.m3u8 || data.stream || data.source || data
-                    .video_url;
+                let rawUrl = data.url || data.stream_url || data.link || data.m3u8 || data.stream;
                 if (!rawUrl) {
-                    // محاولة البحث عن أي رابط http في الكائن
                     for (const val of Object.values(data)) {
                         if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
                             rawUrl = val;
@@ -922,7 +859,6 @@
                 }
                 if (!rawUrl) return null;
                 lastLinkDiag.originalUrl = rawUrl;
-                // 2. إذا كان الرابط يحتوي على "?url=" فهو صفحة وسيطة، استخرج قيمة url
                 if (rawUrl.includes('?url=')) {
                     try {
                         const urlObj = new URL(rawUrl);
@@ -934,37 +870,21 @@
                         }
                     } catch (e) {}
                 }
-                // 3. إذا كان الرابط مباشر .m3u8
-                if (rawUrl.includes('.m3u8') || rawUrl.includes('m3u8?')) {
-                    lastLinkDiag.isIntermediate = false;
-                    lastLinkDiag.extractedM3u8 = rawUrl;
-                    return rawUrl;
-                }
-                // 4. إذا لم نتمكن من تحديد، نعيد rawUrl على أمل أنه قابل للتشغيل
                 lastLinkDiag.isIntermediate = false;
                 lastLinkDiag.extractedM3u8 = rawUrl;
                 return rawUrl;
             }
 
-            // --- API Calls ---
             async function callApi(endpoint, diagObjRef) {
-                if (!rapidApiKey) {
-                    throw new Error('NO_KEY');
-                }
-                if (checkRateLimit()) {
-                    throw new Error('RATE_LIMITED');
-                }
+                if (!rapidApiKey) throw new Error('NO_KEY');
+                if (checkRateLimit()) throw new Error('RATE_LIMITED');
                 const url = API_BASE + endpoint;
                 const startTime = performance.now();
                 safeLog(`[API] GET ${endpoint}`);
                 let response;
                 try {
-                    response = await fetch(url, {
-                        method: 'GET',
-                        headers: getHeaders()
-                    });
+                    response = await fetch(url, { method: 'GET', headers: getHeaders() });
                 } catch (err) {
-                    safeLog(`[API] Network Error: ${err.message}`);
                     if (diagObjRef) {
                         diagObjRef.status = 'Network Error';
                         diagObjRef.time = Math.round(performance.now() - startTime);
@@ -980,13 +900,8 @@
                     diagObjRef.conn = response.ok ? 'نجح' : 'فشل';
                 }
                 let body;
-                const contentType = response.headers.get('content-type') || '';
                 try {
-                    if (contentType.includes('application/json')) {
-                        body = await response.json();
-                    } else {
-                        body = await response.text();
-                    }
+                    body = await response.json();
                 } catch (e) {
                     body = await response.text();
                 }
@@ -1015,7 +930,7 @@
                         allMatchesData = [];
                         lastAllMatchDiag.count = 0;
                         updateApiStatusBadge('error');
-                        showToast('⚠️ لم يتم العثور على مصفوفة مباريات في الاستجابة. راجع JSON الخام.', 5000);
+                        showToast('⚠️ لم يتم العثور على مصفوفة مباريات في الاستجابة.', 5000);
                     } else {
                         allMatchesData = matches;
                         lastAllMatchDiag.count = matches.length;
@@ -1025,34 +940,17 @@
                     updateStats();
                     renderMatches();
                     statLastUpdate.textContent = new Date().toLocaleTimeString('ar-SA');
-                    safeLog(`[API] Matches parsed: ${allMatchesData.length}`);
                 } catch (err) {
-                    safeLog(`[API] Error fetching all-match: ${err.message}`);
                     lastAllMatchResponse = err.body || null;
-                    if (err.message === 'NO_KEY') {
-                        showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
-                        updateApiStatusBadge('error');
-                    } else if (err.message === 'RATE_LIMITED') {} else if (err.status === 429) {
-                        setRateLimit(60);
-                        lastAllMatchDiag.status = 429;
-                        lastAllMatchDiag.conn = 'Too Many Requests';
-                    } else if (err.status === 401 || err.status === 403) {
+                    if (err.message === 'NO_KEY') showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
+                    else if (err.status === 429) { setRateLimit(60);
+                        lastAllMatchDiag.status = 429; } else if (err.status === 401 || err.status === 403)
                         showToast('🔒 خطأ 401/403: المفتاح أو الصلاحيات قد تكون المشكلة.', 5000);
-                        updateApiStatusBadge('error');
-                        lastAllMatchDiag.status = err.status;
-                    } else if (err.status === 404) {
-                        showToast('❌ خطأ 404: Endpoint غير موجود.', 4000);
-                        updateApiStatusBadge('error');
-                    } else if (err.status >= 500) {
-                        showToast('💥 خطأ ' + err.status + ': المشكلة غالبًا من الخادم.', 5000);
-                        updateApiStatusBadge('error');
-                    } else if (err.message.startsWith('NETWORK_ERROR')) {
-                        showToast('🌐 خطأ في الشبكة أو CORS. تحقق من الاتصال.', 5000);
-                        updateApiStatusBadge('error');
-                    } else {
-                        showToast('❌ خطأ: ' + err.message, 4000);
-                        updateApiStatusBadge('error');
-                    }
+                    else if (err.status === 404) showToast('❌ خطأ 404: Endpoint غير موجود.', 4000);
+                    else if (err.status >= 500) showToast('💥 خطأ ' + err.status + ': المشكلة غالبًا من الخادم.', 5000);
+                    else if (err.message.startsWith('NETWORK_ERROR')) showToast('🌐 خطأ في الشبكة أو CORS.', 5000);
+                    else showToast('❌ خطأ: ' + err.message, 4000);
+                    updateApiStatusBadge('error');
                     updateAllMatchDiagUI();
                     allMatchesData = [];
                     renderMatches();
@@ -1065,13 +963,9 @@
             }
 
             async function fetchStreamLink(matchId) {
-                if (!rapidApiKey) {
-                    showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
-                    return null;
-                }
+                if (!rapidApiKey) { showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000); return null; }
                 if (checkRateLimit()) return null;
                 updateApiStatusBadge('loading');
-                // إعادة تعيين تشخيصات الرابط
                 lastLinkDiag = { status: null, time: null, found: null, originalUrl: null, extractedM3u8: null,
                     isIntermediate: false, conn: null };
                 try {
@@ -1085,12 +979,8 @@
                 } catch (err) {
                     lastLinkResponse = err.body || null;
                     lastLinkDiag.found = 'خطأ';
-                    if (err.status === 429) {
-                        setRateLimit(60);
-                        lastLinkDiag.status = 429;
-                    } else {
-                        lastLinkDiag.status = err.status || 'Error';
-                    }
+                    if (err.status === 429) setRateLimit(60);
+                    lastLinkDiag.status = err.status || 'Error';
                     lastLinkDiag.conn = 'فشل';
                     updateLinkDiagUI();
                     updateApiStatusBadge('error');
@@ -1104,14 +994,6 @@
                 diagAllTime.textContent = lastAllMatchDiag.time ?? '-';
                 diagAllCount.textContent = lastAllMatchDiag.count ?? '-';
                 diagAllConn.textContent = lastAllMatchDiag.conn ?? '-';
-                if (lastAllMatchDiag.status === 429) {
-                    diagAllStatus.textContent = '429 ⚠️';
-                    diagAllStatus.style.color = 'var(--red)';
-                } else if (lastAllMatchDiag.status === 200) {
-                    diagAllStatus.style.color = 'var(--green)';
-                } else if (lastAllMatchDiag.status) {
-                    diagAllStatus.style.color = 'var(--red)';
-                }
             }
 
             function updateLinkDiagUI() {
@@ -1119,14 +1001,6 @@
                 diagLinkTime.textContent = lastLinkDiag.time ?? '-';
                 diagLinkFound.textContent = lastLinkDiag.found ?? '-';
                 diagLinkConn.textContent = lastLinkDiag.conn ?? '-';
-                if (lastLinkDiag.status === 429) {
-                    diagLinkStatus.textContent = '429 ⚠️';
-                    diagLinkStatus.style.color = 'var(--red)';
-                } else if (lastLinkDiag.status === 200) {
-                    diagLinkStatus.style.color = 'var(--green)';
-                } else if (lastLinkDiag.status) {
-                    diagLinkStatus.style.color = 'var(--red)';
-                }
             }
 
             function updateStats() {
@@ -1146,27 +1020,22 @@
                 statUpcoming.textContent = upcomingCount;
             }
 
-            // --- Render ---
             function getFilteredMatches() {
                 let data = [...allMatchesData];
                 const searchTerm = searchInput.value.trim().toLowerCase();
                 const filterVal = filterStatus.value;
                 const sortVal = sortBy.value;
-
                 if (searchTerm) {
                     data = data.filter(m => {
                         const home = detectTeamName(m, 'home').toLowerCase();
                         const away = detectTeamName(m, 'away').toLowerCase();
                         const tournament = detectTournament(m).toLowerCase();
                         const id = detectMatchId(m)?.toLowerCase() || '';
-                        const status = detectMatchStatus(m).toLowerCase();
                         return home.includes(searchTerm) || away.includes(searchTerm) || tournament.includes(
-                            searchTerm) || id.includes(searchTerm) || status.includes(searchTerm);
+                            searchTerm) || id.includes(searchTerm);
                     });
                 }
-                if (filterVal !== 'all') {
-                    data = data.filter(m => detectMatchStatus(m) === filterVal);
-                }
+                if (filterVal !== 'all') data = data.filter(m => detectMatchStatus(m) === filterVal);
                 if (sortVal === 'live_first') {
                     const priority = { live: 0, upcoming: 1, unknown: 2, finished: 3 };
                     data.sort((a, b) => (priority[detectMatchStatus(a)] || 2) - (priority[detectMatchStatus(b)] || 2));
@@ -1191,7 +1060,7 @@
                 }
                 if (filtered.length === 0) {
                     matchesGrid.innerHTML =
-                        '<div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">لا توجد نتائج تطابق البحث/الفلتر.</div>';
+                        '<div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">لا توجد نتائج.</div>';
                     return;
                 }
                 matchesGrid.innerHTML = filtered.map(m => {
@@ -1214,7 +1083,6 @@
                     else if (status === 'finished') statusBadge =
                         '<span class="badge badge-finished">✅ انتهت</span>';
                     else statusBadge = '<span class="badge badge-unknown">❓ غير معروف</span>';
-
                     return `
                 <div class="${cardClass}" data-match-id="${matchId || ''}" onclick="window._openMatchDetail('${matchId || ''}')">
                   ${liveBadge}
@@ -1245,7 +1113,6 @@
                 return div.innerHTML;
             }
 
-            // --- Modal functions ---
             function openModal(html) {
                 modalContent.innerHTML = html;
                 modalOverlay.style.display = 'flex';
@@ -1267,10 +1134,7 @@
 
             window._openMatchDetail = function(matchId) {
                 const match = allMatchesData.find(m => detectMatchId(m) === matchId);
-                if (!match) {
-                    showToast('لم يتم العثور على المباراة.', 3000);
-                    return;
-                }
+                if (!match) { showToast('لم يتم العثور على المباراة.', 3000); return; }
                 const status = detectMatchStatus(match);
                 const homeName = detectTeamName(match, 'home');
                 const awayName = detectTeamName(match, 'away');
@@ -1301,10 +1165,7 @@
             };
 
             window._testStream = async function(matchId) {
-                if (!matchId) {
-                    showToast('⚠️ لم يتم العثور على ID لهذه المباراة.', 4000);
-                    return;
-                }
+                if (!matchId) { showToast('⚠️ لم يتم العثور على ID لهذه المباراة.', 4000); return; }
                 const match = allMatchesData.find(m => detectMatchId(m) === matchId);
                 const homeName = match ? detectTeamName(match, 'home') : '?';
                 const awayName = match ? detectTeamName(match, 'away') : '?';
@@ -1330,7 +1191,6 @@
                 const streamUrl = result.realUrl;
                 const diag = result.diag;
                 const isHls = streamUrl.includes('.m3u8') || streamUrl.includes('m3u8?');
-                // بناء واجهة المشغل مع التشخيصات
                 const html = `
               <button class="modal-close" onclick="window._closeModal()">✕</button>
               <h3>🎥 ${escapeHtml(homeName)} VS ${escapeHtml(awayName)}</h3>
@@ -1360,6 +1220,7 @@
                 <div>📺 HLS مدعوم: ${Hls.isSupported() ? 'نعم' : 'لا (قد تحتاج Safari)'}</div>
                 <div id="hlsManifestStatus">📜 Manifest: لم يتم التحميل بعد</div>
                 <div id="hlsErrorDetail"></div>
+                <div id="hlsRecoveryAttempts">🔄 محاولات الاسترداد: 0</div>
               </div>
               <details style="margin-top:12px;"><summary>📦 JSON الخام من /link</summary><pre style="font-size:0.7em;max-height:200px;overflow:auto;background:#0d1117;padding:10px;border-radius:8px;">${JSON.stringify(result.response,null,2)}</pre></details>
             `;
@@ -1375,7 +1236,7 @@
                 const loadingInd = document.getElementById('loadingIndicator');
                 const manifestStatus = document.getElementById('hlsManifestStatus');
                 const errorDetail = document.getElementById('hlsErrorDetail');
-
+                const recoveryAttemptsSpan = document.getElementById('hlsRecoveryAttempts');
                 if (!video) return;
                 if (window._hlsInstance) {
                     window._hlsInstance.destroy();
@@ -1386,6 +1247,9 @@
                 errorP.style.display = 'none';
                 if (manifestStatus) manifestStatus.textContent = '📜 Manifest: لم يتم التحميل بعد';
                 if (errorDetail) errorDetail.innerHTML = '';
+                if (recoveryAttemptsSpan) recoveryAttemptsSpan.textContent = '🔄 محاولات الاسترداد: 0';
+                let recoveryAttempts = 0;
+                const maxRecoveryAttempts = 5;
 
                 function showError(msg) {
                     errorP.textContent = '❌ ' + msg;
@@ -1393,73 +1257,136 @@
                     if (errorDetail) errorDetail.innerHTML += '<div>❌ ' + msg + '</div>';
                 }
 
-                function showManifestLoaded() {
-                    if (manifestStatus) manifestStatus.textContent = '📜 Manifest: تم التحميل بنجاح ✅';
+                function incrementRecovery() {
+                    recoveryAttempts++;
+                    if (recoveryAttemptsSpan) recoveryAttemptsSpan.textContent = '🔄 محاولات الاسترداد: ' +
+                        recoveryAttempts;
+                    if (recoveryAttempts > maxRecoveryAttempts) {
+                        showError('تم تجاوز الحد الأقصى لمحاولات الاسترداد. سيتم إعادة تحميل المشغل.');
+                        if (window._hlsInstance) {
+                            window._hlsInstance.destroy();
+                            window._hlsInstance = null;
+                        }
+                        // إعادة تحميل المصدر تلقائيًا بعد فترة قصيرة
+                        setTimeout(() => {
+                            if (playBtn) playBtn.click();
+                        }, 1500);
+                        return true;
+                    }
+                    return false;
                 }
 
                 playBtn.onclick = () => {
                     errorP.style.display = 'none';
                     if (loadingInd) loadingInd.style.display = 'inline-block';
+                    recoveryAttempts = 0;
+                    if (recoveryAttemptsSpan) recoveryAttemptsSpan.textContent = '🔄 محاولات الاسترداد: 0';
+                    if (errorDetail) errorDetail.innerHTML = '';
+
                     if (isHls && Hls.isSupported()) {
                         if (window._hlsInstance) window._hlsInstance.destroy();
                         const hls = new Hls({
                             debug: false,
                             enableWorker: true,
-                            lowLatencyMode: true,
+                            lowLatencyMode: false,
                             manifestLoadingTimeOut: 15000,
-                            manifestLoadingMaxRetry: 2,
+                            manifestLoadingMaxRetry: 3,
+                            manifestLoadingRetryDelay: 1000,
                             levelLoadingTimeOut: 10000,
+                            levelLoadingMaxRetry: 4,
+                            levelLoadingRetryDelay: 1000,
+                            fragLoadingTimeOut: 15000,
+                            fragLoadingMaxRetry: 6,
+                            fragLoadingRetryDelay: 1000,
+                            startFragPrefetch: true,
+                            testBandwidth: true,
+                            progressive: true,
+                            maxBufferLength: 30,
+                            maxMaxBufferLength: 60,
                         });
                         window._hlsInstance = hls;
                         hls.loadSource(streamUrl);
                         hls.attachMedia(video);
+
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
                             if (loadingInd) loadingInd.style.display = 'none';
-                            showManifestLoaded();
-                            video.play().catch(e => showError('فشل التشغيل: ' + e.message));
+                            if (manifestStatus) manifestStatus.textContent = '📜 Manifest: تم التحميل بنجاح ✅';
+                            video.play().catch(e => showError('فشل بدء التشغيل: ' + e.message));
                         });
+
                         hls.on(Hls.Events.ERROR, (event, data) => {
                             if (loadingInd) loadingInd.style.display = 'none';
-                            let errMsg = '';
-                            if (data.fatal) {
+                            const errorTypeStr = data.type || '';
+                            const detailsStr = data.details || '';
+                            const isFatal = data.fatal;
+                            if (errorDetail) {
+                                errorDetail.innerHTML +=
+                                    `<div>⚠️ HLS ${isFatal?'fatal':'non-fatal'}: ${errorTypeStr} | ${detailsStr} | قطعة: ${data.frag?.url || '?'} | HTTP: ${data.response?.code || '?'}</div>`;
+                            }
+                            if (isFatal) {
                                 switch (data.type) {
                                     case Hls.ErrorTypes.NETWORK_ERROR:
-                                        errMsg = 'خطأ شبكة (networkError). جاري محاولة إعادة التحميل...';
+                                        if (incrementRecovery()) break;
+                                        showError('خطأ شبكة (networkError). جاري إعادة تحميل المصدر...');
                                         hls.startLoad();
                                         break;
                                     case Hls.ErrorTypes.MEDIA_ERROR:
-                                        errMsg = 'خطأ وسائط (mediaError). محاولة استرداد...';
+                                        if (incrementRecovery()) break;
+                                        showError('خطأ وسائط (mediaError). محاولة استرداد الوسائط...');
                                         hls.recoverMediaError();
                                         break;
                                     default:
-                                        errMsg = 'خطأ فادح غير قابل للاسترداد: ' + data.type + ' - ' + (data
-                                            .details || '');
+                                        showError('خطأ فادح: ' + errorTypeStr + ' - ' + detailsStr);
                                         hls.destroy();
                                         window._hlsInstance = null;
                                         break;
                                 }
-                                if (errMsg) showError(errMsg);
-                                if (errorDetail) errorDetail.innerHTML +=
-                                    '<div>⚠️ HLS Error: ' + data.type + ' | ' + (data.details || '') +
-                                    ' | fatal: ' + data.fatal + '</div>';
                             } else {
-                                if (errorDetail) errorDetail.innerHTML +=
-                                    '<div>⚠️ HLS non-fatal: ' + data.type + ' | ' + (data.details || '') +
-                                    '</div>';
+                                if (detailsStr === 'bufferStalledError' || detailsStr ===
+                                    'bufferNudgeOnStall') {
+                                    if (incrementRecovery()) return;
+                                    showError('⚠️ توقف مؤقت في الـ buffer. جاري محاولة الاسترداد...');
+                                    if (hls.media && hls.media.paused) {
+                                        hls.media.play().catch(() => {});
+                                    }
+                                } else if (detailsStr === 'fragLoadError' || detailsStr ===
+                                    'fragLoadTimeOut') {
+                                    showError('فشل تحميل قطعة. إعادة المحاولة تلقائيًا...');
+                                }
                             }
                         });
+
+                        hls.on(Hls.Events.FRAG_LOAD_ERROR, (event, data) => {
+                            if (errorDetail) {
+                                errorDetail.innerHTML +=
+                                    `<div>❌ FRAG_LOAD_ERROR | ${data.frag?.url || '?'} | HTTP: ${data.response?.code || '?'}</div>`;
+                            }
+                        });
+
+                        hls.on(Hls.Events.FRAG_LOADED, (event, data) => {
+                            recoveryAttempts = 0;
+                            if (recoveryAttemptsSpan) recoveryAttemptsSpan.textContent =
+                                '🔄 محاولات الاسترداد: 0';
+                            if (errorDetail) {
+                                errorDetail.innerHTML +=
+                                    `<div>✅ Fragment loaded | SN: ${data.frag?.sn ?? '?'}</div>`;
+                            }
+                        });
+
                         hls.on(Hls.Events.MEDIA_ATTACHED, () => {
                             safeLog('HLS: media attached');
                         });
-                        hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
-                            safeLog('HLS: level loaded', data);
+                        hls.on(Hls.Events.LEVEL_LOADED, () => {
+                            safeLog('HLS: level loaded');
                         });
+
                     } else if (isHls && !Hls.isSupported()) {
                         video.src = streamUrl;
                         video.play().then(() => {
                             if (loadingInd) loadingInd.style.display = 'none';
-                            showManifestLoaded();
-                        }).catch(e => showError('فشل التشغيل (ربما لا يدعم المتصفح HLS): ' + e.message));
+                            if (manifestStatus) manifestStatus.textContent =
+                                '📜 Manifest: تشغيل أصلي (Safari)';
+                        }).catch(e => showError('فشل التشغيل: ' + e.message));
                     } else {
                         video.src = streamUrl;
                         video.play().then(() => {
@@ -1490,52 +1417,35 @@
                     }
                     showError(msg);
                 };
-
-                video.onplaying = () => {
-                    if (loadingInd) loadingInd.style.display = 'none';
-                };
             }
 
-            window._closeModal = function() {
-                closeModal();
-            };
-            window._showToast = function(msg) {
-                showToast(msg);
-            };
+            window._closeModal = function() { closeModal(); };
+            window._showToast = function(msg) { showToast(msg); };
             window._showLinkJson = function() {
                 if (lastLinkResponse) {
                     jsonViewer.textContent = JSON.stringify(lastLinkResponse, null, 2);
                     showToast('✅ تم عرض JSON /link/{id}', 2000);
-                } else {
-                    showToast('لا يوجد بيانات /link بعد.', 3000);
-                }
+                } else showToast('لا يوجد بيانات /link بعد.', 3000);
             };
 
-            // --- Event Listeners ---
             modalOverlay.addEventListener('click', function(e) {
                 if (e.target === modalOverlay) closeModal();
             });
-
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && modalOverlay.style.display === 'flex') closeModal();
             });
-
             saveKeyBtn.addEventListener('click', () => {
                 const key = apiKeyInput.value.trim();
                 if (key) {
                     rapidApiKey = key;
                     localStorage.setItem('fb_stream_key', key);
                     updateKeyStatus();
-                    showToast('✅ تم حفظ المفتاح في localStorage.', 2000);
+                    showToast('✅ تم حفظ المفتاح.', 2000);
                 }
             });
-
             testConnBtn.addEventListener('click', async () => {
                 const key = apiKeyInput.value.trim();
-                if (!key && !rapidApiKey) {
-                    showToast('🔑 الرجاء إدخال المفتاح أولاً.', 3000);
-                    return;
-                }
+                if (!key && !rapidApiKey) { showToast('🔑 الرجاء إدخال المفتاح أولاً.', 3000); return; }
                 if (key) {
                     rapidApiKey = key;
                     localStorage.setItem('fb_stream_key', key);
@@ -1544,19 +1454,13 @@
                 showToast('🔌 جاري اختبار الاتصال...', 2000);
                 await fetchAllMatches();
             });
-
             refreshBtn.addEventListener('click', async () => {
-                if (isRefreshing) {
-                    showToast('⏳ الطلب السابق ما زال قيد التنفيذ...', 2000);
-                    return;
-                }
+                if (isRefreshing) { showToast('⏳ الطلب السابق ما زال قيد التنفيذ...', 2000); return; }
                 await fetchAllMatches();
             });
-
             searchInput.addEventListener('input', renderMatches);
             filterStatus.addEventListener('change', renderMatches);
             sortBy.addEventListener('change', renderMatches);
-
             autoRefreshSelect.addEventListener('change', () => {
                 stopAutoRefresh();
                 const val = autoRefreshSelect.value;
@@ -1571,69 +1475,53 @@
                 stopAutoRefresh();
                 if (autoRefreshSeconds && autoRefreshSeconds > 0) {
                     autoRefreshInterval = setInterval(() => {
-                        if (!rateLimitActive && !isRefreshing) {
-                            fetchAllMatches();
-                        }
+                        if (!rateLimitActive && !isRefreshing) fetchAllMatches();
                     }, autoRefreshSeconds * 1000);
                 }
             }
 
             function stopAutoRefresh() {
-                if (autoRefreshInterval) {
-                    clearInterval(autoRefreshInterval);
-                    autoRefreshInterval = null;
-                }
+                if (autoRefreshInterval) { clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null; }
             }
 
-            // JSON viewer buttons
             document.getElementById('showAllMatchJson').addEventListener('click', () => {
                 if (lastAllMatchResponse) {
                     jsonViewer.textContent = JSON.stringify(lastAllMatchResponse, null, 2);
                     showToast('✅ تم عرض JSON /all-match', 2000);
-                } else {
-                    showToast('لا يوجد بيانات /all-match بعد.', 3000);
-                }
+                } else showToast('لا يوجد بيانات.', 3000);
             });
             document.getElementById('showLinkJson').addEventListener('click', () => {
                 if (lastLinkResponse) {
                     jsonViewer.textContent = JSON.stringify(lastLinkResponse, null, 2);
-                    showToast('✅ تم عرض JSON /link/{id}', 2000);
-                } else {
-                    showToast('لا يوجد بيانات /link بعد.', 3000);
-                }
+                    showToast('✅ تم عرض JSON /link', 2000);
+                } else showToast('لا يوجد بيانات.', 3000);
             });
             document.getElementById('copyJsonBtn').addEventListener('click', () => {
                 const text = jsonViewer.textContent;
                 if (text && text !== 'لا يوجد بيانات بعد. اضغط على زر لعرض JSON.') {
                     navigator.clipboard.writeText(text).then(() => showToast('✅ تم نسخ JSON', 2000));
-                } else {
-                    showToast('لا يوجد JSON لنسخه.', 2000);
-                }
+                } else showToast('لا يوجد JSON لنسخه.', 2000);
             });
             document.getElementById('clearJsonBtn').addEventListener('click', () => {
                 jsonViewer.textContent = 'لا يوجد بيانات بعد. اضغط على زر لعرض JSON.';
                 showToast('🗑 تم مسح العارض.', 1500);
             });
 
-            // --- Initial auto-fetch ---
             if (rapidApiKey) {
                 updateKeyStatus();
-                setTimeout(() => {
-                    if (!isRefreshing) fetchAllMatches();
-                }, 600);
+                setTimeout(() => { if (!isRefreshing) fetchAllMatches(); }, 600);
             } else {
                 updateKeyStatus();
                 updateApiStatusBadge('error');
                 statApiStatus.querySelector('.label').textContent = 'أدخل المفتاح';
             }
 
-            // --- Expose for inline onclick ---
             window._openMatchDetail = window._openMatchDetail;
             window._testStream = window._testStream;
             window._closeModal = window._closeModal;
             window._showToast = window._showToast;
             window._showLinkJson = window._showLinkJson;
-
         })();
     </script>
 </body>
