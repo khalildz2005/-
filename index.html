@@ -352,7 +352,7 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 24px;
-            max-width: 700px;
+            max-width: 800px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
@@ -508,6 +508,25 @@
                 transform: rotate(360deg);
             }
         }
+        .player-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .diag-details {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8em;
+            margin-top: 12px;
+        }
+        .diag-details div {
+            margin: 4px 0;
+        }
+        .full-width {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -620,7 +639,8 @@
             let lastAllMatchResponse = null;
             let lastLinkResponse = null;
             let lastAllMatchDiag = { status: null, time: null, count: null };
-            let lastLinkDiag = { status: null, time: null, found: null };
+            let lastLinkDiag = { status: null, time: null, found: null, originalUrl: null, extractedM3u8: null,
+                isIntermediate: false };
             let isRefreshing = false;
             let autoRefreshInterval = null;
             let autoRefreshSeconds = null;
@@ -696,10 +716,8 @@
 
             // --- Console safe logging ---
             function safeLog(...args) {
-                // Never log the API key
                 const sanitized = args.map(a => {
-                    if (typeof a === 'string' && a.includes(rapidApiKey) && rapidApiKey.length >
-                        4) {
+                    if (typeof a === 'string' && a.includes(rapidApiKey) && rapidApiKey.length > 4) {
                         return a.replace(rapidApiKey, '***REDACTED***');
                     }
                     return a;
@@ -767,7 +785,7 @@
             function extractMatchesArray(data) {
                 if (Array.isArray(data)) return data;
                 if (data && typeof data === 'object') {
-                    for (const key of ['data', 'matches', 'results', 'fixtures', 'games', 'items', 'response',
+                    for (const key of ['result', 'data', 'matches', 'results', 'fixtures', 'games', 'items', 'response',
                             'body'
                         ]) {
                         if (Array.isArray(data[key])) return data[key];
@@ -776,7 +794,6 @@
                         if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].matches)) return data[
                             key].matches;
                     }
-                    // try to find any array in the object
                     for (const val of Object.values(data)) {
                         if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
                     }
@@ -801,8 +818,8 @@
                     const val = match[key];
                     if (val === undefined || val === null) continue;
                     const v = String(val).toLowerCase().trim();
-                    if (['live', 'playing', 'in_play', 'inplay', '1', 'true', 'yes', 'ongoing', 'active'].includes(
-                            v)) return 'live';
+                    if (['live', 'playing', 'in_play', 'inplay', '1', 'true', 'yes', 'ongoing', 'active'].includes(v))
+                        return 'live';
                     if (['finished', 'ended', 'completed', 'ft', 'full_time', 'fulltime', '2', 'done'].includes(v))
                         return 'finished';
                     if (['scheduled', 'upcoming', 'not_started', 'notstarted', 'pre', '0', 'future', 'pending',
@@ -812,10 +829,8 @@
                     if (v.includes('finish') || v.includes('end') || v.includes('complet')) return 'finished';
                     if (v.includes('schedul') || v.includes('upcom') || v.includes('not_start')) return 'upcoming';
                 }
-                // check boolean live flag
                 if (match.live === true || match.is_live === true || match.isLive === true) return 'live';
                 if (match.finished === true || match.ended === true || match.is_finished === true) return 'finished';
-                // check if has score and time suggests live
                 if ((match.score || match.goals || match.result) && !match.finished && !match.ended) return 'live';
                 return 'unknown';
             }
@@ -825,13 +840,12 @@
                     'guest'
                 ];
                 for (const p of prefixes) {
-                    for (const suf of ['_team', 'Team', '_name', 'Name', '']) {
+                    for (const suf of ['_name', 'Name', '', '_team']) {
                         const key = p + suf;
                         if (match[key] && typeof match[key] === 'string') return match[key];
                         if (match[key] && typeof match[key] === 'object' && match[key].name) return match[key].name;
                     }
                 }
-                // Try nested team object
                 if (match.home && match.home.name) return match.home.name;
                 if (match.away && match.away.name) return match.away.name;
                 if (match.teams && match.teams.home && match.teams.home.name) return match.teams.home.name;
@@ -844,16 +858,16 @@
                     'guest'
                 ];
                 for (const p of prefixes) {
-                    for (const suf of ['_logo', 'Logo', '_image', 'Image', '_icon', 'Icon', '_badge', 'Badge']) {
+                    for (const suf of ['_flag', '_logo', 'Flag', 'Logo', '_image', 'Image']) {
                         const key = p + suf;
                         if (match[key] && typeof match[key] === 'string' && match[key].startsWith('http')) return match[
                             key];
                     }
                 }
-                if (match.home && match.home.logo && typeof match.home.logo === 'string') return match.home.logo;
-                if (match.away && match.away.logo && typeof match.away.logo === 'string') return match.away.logo;
-                if (match.teams && match.teams.home && match.teams.home.logo) return match.teams.home.logo;
-                if (match.teams && match.teams.away && match.teams.away.logo) return match.teams.away.logo;
+                if (match.home && match.home.flag && typeof match.home.flag === 'string') return match.home.flag;
+                if (match.away && match.away.flag && typeof match.away.flag === 'string') return match.away.flag;
+                if (match.teams && match.teams.home && match.teams.home.flag) return match.teams.home.flag;
+                if (match.teams && match.teams.away && match.teams.away.flag) return match.teams.away.flag;
                 return '';
             }
 
@@ -872,7 +886,7 @@
             }
 
             function detectTournament(match) {
-                for (const key of ['tournament', 'league', 'competition', 'championship', 'cup', 'event', 'category',
+                for (const key of ['league', 'tournament', 'competition', 'championship', 'cup', 'event', 'category',
                         'tournament_name', 'league_name'
                     ]) {
                     if (match[key] && typeof match[key] === 'string') return match[key];
@@ -882,7 +896,7 @@
             }
 
             function detectMatchTime(match) {
-                for (const key of ['time', 'match_time', 'kickoff', 'kick_off', 'start_time', 'datetime', 'date_time',
+                for (const key of ['kickoff', 'time', 'match_time', 'kick_off', 'start_time', 'datetime', 'date_time',
                         'scheduled'
                     ]) {
                     if (match[key] && typeof match[key] === 'string') return match[key];
@@ -891,54 +905,45 @@
                 return null;
             }
 
-            // --- Stream link detection ---
-            function detectStreamUrl(data) {
+            // --- استخراج رابط البث الحقيقي (M3U8) من الاستجابة ---
+            function extractRealStreamUrl(data) {
                 if (!data || typeof data !== 'object') return null;
-                // Direct string response
-                if (typeof data === 'string' && (data.startsWith('http://') || data.startsWith('https://'))) return data;
-                const keys = ['url', 'stream', 'stream_url', 'm3u8', 'link', 'stream_link', 'source', 'video_url',
-                    'play_url', 'hls', 'hls_url', 'src'
-                ];
-                for (const key of keys) {
-                    const val = data[key];
-                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) return val;
-                    if (typeof val === 'object' && val !== null) {
-                        for (const subKey of ['url', 'link', 'src', 'm3u8', 'hls']) {
-                            if (typeof val[subKey] === 'string' && val[subKey].startsWith('http')) return val[subKey];
+                // 1. تحقق من وجود حقل "url"
+                let rawUrl = data.url || data.stream_url || data.link || data.m3u8 || data.stream || data.source || data
+                    .video_url;
+                if (!rawUrl) {
+                    // محاولة البحث عن أي رابط http في الكائن
+                    for (const val of Object.values(data)) {
+                        if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+                            rawUrl = val;
+                            break;
                         }
                     }
                 }
-                // Search all string values
-                for (const val of Object.values(data)) {
-                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://')) && (val
-                            .includes('m3u8') || val.includes('stream') || val.includes('video') || val.includes(
-                                'live'))) {
-                        return val;
-                    }
+                if (!rawUrl) return null;
+                lastLinkDiag.originalUrl = rawUrl;
+                // 2. إذا كان الرابط يحتوي على "?url=" فهو صفحة وسيطة، استخرج قيمة url
+                if (rawUrl.includes('?url=')) {
+                    try {
+                        const urlObj = new URL(rawUrl);
+                        const extracted = urlObj.searchParams.get('url');
+                        if (extracted && (extracted.startsWith('http://') || extracted.startsWith('https://'))) {
+                            lastLinkDiag.isIntermediate = true;
+                            lastLinkDiag.extractedM3u8 = extracted;
+                            return extracted;
+                        }
+                    } catch (e) {}
                 }
-                // Any http link as fallback
-                for (const val of Object.values(data)) {
-                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) return val;
+                // 3. إذا كان الرابط مباشر .m3u8
+                if (rawUrl.includes('.m3u8') || rawUrl.includes('m3u8?')) {
+                    lastLinkDiag.isIntermediate = false;
+                    lastLinkDiag.extractedM3u8 = rawUrl;
+                    return rawUrl;
                 }
-                return null;
-            }
-
-            function detectStreamQuality(data) {
-                for (const key of ['quality', 'resolution', 'bitrate', 'label']) {
-                    if (data[key]) return String(data[key]);
-                }
-                return 'غير معروفة';
-            }
-
-            function detectStreamSource(data) {
-                for (const key of ['source', 'provider', 'platform', 'cdn']) {
-                    if (data[key] && typeof data[key] === 'string') return data[key];
-                }
-                return 'غير معروف';
-            }
-
-            function isHlsCandidate(url) {
-                return url.includes('.m3u8') || url.includes('m3u8?') || url.includes('hls');
+                // 4. إذا لم نتمكن من تحديد، نعيد rawUrl على أمل أنه قابل للتشغيل
+                lastLinkDiag.isIntermediate = false;
+                lastLinkDiag.extractedM3u8 = rawUrl;
+                return rawUrl;
             }
 
             // --- API Calls ---
@@ -1007,7 +1012,6 @@
                     lastAllMatchResponse = result.body;
                     const matches = extractMatchesArray(result.body);
                     if (matches === null) {
-                        // No array found - show raw
                         allMatchesData = [];
                         lastAllMatchDiag.count = 0;
                         updateApiStatusBadge('error');
@@ -1028,9 +1032,7 @@
                     if (err.message === 'NO_KEY') {
                         showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
                         updateApiStatusBadge('error');
-                    } else if (err.message === 'RATE_LIMITED') {
-                        // Already handled
-                    } else if (err.status === 429) {
+                    } else if (err.message === 'RATE_LIMITED') {} else if (err.status === 429) {
                         setRateLimit(60);
                         lastAllMatchDiag.status = 429;
                         lastAllMatchDiag.conn = 'Too Many Requests';
@@ -1069,13 +1071,17 @@
                 }
                 if (checkRateLimit()) return null;
                 updateApiStatusBadge('loading');
+                // إعادة تعيين تشخيصات الرابط
+                lastLinkDiag = { status: null, time: null, found: null, originalUrl: null, extractedM3u8: null,
+                    isIntermediate: false, conn: null };
                 try {
                     const result = await callApi(`/link/${matchId}`, lastLinkDiag);
                     lastLinkResponse = result.body;
-                    lastLinkDiag.found = detectStreamUrl(result.body) ? 'نعم' : 'لا يوجد';
+                    const realUrl = extractRealStreamUrl(result.body);
+                    lastLinkDiag.found = realUrl ? 'نعم' : 'لا يوجد';
                     updateLinkDiagUI();
                     updateApiStatusBadge('ok');
-                    return result.body;
+                    return { response: result.body, realUrl, diag: lastLinkDiag };
                 } catch (err) {
                     lastLinkResponse = err.body || null;
                     lastLinkDiag.found = 'خطأ';
@@ -1127,14 +1133,12 @@
                 const total = allMatchesData.length;
                 let liveCount = 0,
                     finishedCount = 0,
-                    upcomingCount = 0,
-                    unknownCount = 0;
+                    upcomingCount = 0;
                 allMatchesData.forEach(m => {
                     const s = detectMatchStatus(m);
                     if (s === 'live') liveCount++;
                     else if (s === 'finished') finishedCount++;
                     else if (s === 'upcoming') upcomingCount++;
-                    else unknownCount++;
                 });
                 statTotal.textContent = total;
                 statLive.textContent = liveCount;
@@ -1163,7 +1167,6 @@
                 if (filterVal !== 'all') {
                     data = data.filter(m => detectMatchStatus(m) === filterVal);
                 }
-                // Sort
                 if (sortVal === 'live_first') {
                     const priority = { live: 0, upcoming: 1, unknown: 2, finished: 3 };
                     data.sort((a, b) => (priority[detectMatchStatus(a)] || 2) - (priority[detectMatchStatus(b)] || 2));
@@ -1206,8 +1209,10 @@
                     const liveBadge = isLive ? '<div class="live-badge">🔴 LIVE</div>' : '';
                     let statusBadge = '';
                     if (status === 'live') statusBadge = '<span class="badge badge-live">🔴 مباشر</span>';
-                    else if (status === 'upcoming') statusBadge = '<span class="badge badge-upcoming">🕐 قادمة</span>';
-                    else if (status === 'finished') statusBadge = '<span class="badge badge-finished">✅ انتهت</span>';
+                    else if (status === 'upcoming') statusBadge =
+                        '<span class="badge badge-upcoming">🕐 قادمة</span>';
+                    else if (status === 'finished') statusBadge =
+                        '<span class="badge badge-finished">✅ انتهت</span>';
                     else statusBadge = '<span class="badge badge-unknown">❓ غير معروف</span>';
 
                     return `
@@ -1248,14 +1253,12 @@
 
             function closeModal() {
                 modalOverlay.style.display = 'none';
-                // Stop any video
                 const video = modalContent.querySelector('video');
                 if (video) {
                     video.pause();
                     video.removeAttribute('src');
                     video.load();
                 }
-                // Destroy hls instance if any
                 if (window._hlsInstance) {
                     window._hlsInstance.destroy();
                     window._hlsInstance = null;
@@ -1305,70 +1308,75 @@
                 const match = allMatchesData.find(m => detectMatchId(m) === matchId);
                 const homeName = match ? detectTeamName(match, 'home') : '?';
                 const awayName = match ? detectTeamName(match, 'away') : '?';
+                const score = match ? detectScore(match) : null;
+                const tournament = match ? detectTournament(match) : '?';
                 openModal(`
               <button class="modal-close" onclick="window._closeModal()">✕</button>
               <h3>🎥 بث المباراة</h3>
-              <p>${escapeHtml(homeName)} VS ${escapeHtml(awayName)} | ID: ${matchId}</p>
+              <p>${escapeHtml(homeName)} VS ${escapeHtml(awayName)} | ${score ? escapeHtml(score) : 'VS'} | ${escapeHtml(tournament)}</p>
               <div style="text-align:center;padding:30px;"><span class="spinner"></span> جاري جلب رابط البث...</div>
             `);
-                const responseData = await fetchStreamLink(matchId);
-                if (!responseData) {
+                const result = await fetchStreamLink(matchId);
+                if (!result || !result.realUrl) {
                     modalContent.innerHTML = `
                 <button class="modal-close" onclick="window._closeModal()">✕</button>
                 <h3>🎥 فشل جلب البث</h3>
-                <p class="text-red">تعذر الحصول على رابط البث. تحقق من Diagnostics و JSON الخام.</p>
+                <p class="text-red">تعذر الحصول على رابط بث صالح. تحقق من Diagnostics و JSON الخام.</p>
                 <button class="btn" onclick="window._showLinkJson()">📦 عرض JSON /link</button>
                 <button class="btn" onclick="window._closeModal()">إغلاق</button>
               `;
                     return;
                 }
-                const streamUrl = detectStreamUrl(responseData);
-                const quality = detectStreamQuality(responseData);
-                const source = detectStreamSource(responseData);
-                if (!streamUrl) {
-                    modalContent.innerHTML = `
-                <button class="modal-close" onclick="window._closeModal()">✕</button>
-                <h3>🎥 لم يتم العثور على رابط بث</h3>
-                <p>الاستجابة لا تحتوي على رابط بث صالح. راجع JSON الخام.</p>
-                <div class="stream-link-box">لا يوجد رابط</div>
-                <button class="btn" onclick="window._showLinkJson()">📦 عرض JSON /link</button>
-                <button class="btn" onclick="window._closeModal()">إغلاق</button>
-              `;
-                    return;
-                }
-                const isHls = isHlsCandidate(streamUrl);
+                const streamUrl = result.realUrl;
+                const diag = result.diag;
+                const isHls = streamUrl.includes('.m3u8') || streamUrl.includes('m3u8?');
+                // بناء واجهة المشغل مع التشخيصات
                 const html = `
               <button class="modal-close" onclick="window._closeModal()">✕</button>
-              <h3>🎥 بث المباراة</h3>
-              <p><strong>${escapeHtml(homeName)} VS ${escapeHtml(awayName)}</strong></p>
-              <p>الحالة: ${isHls ? 'HLS/M3U8 مرشح' : 'رابط مباشر'} | الجودة: ${escapeHtml(quality)} | المصدر: ${escapeHtml(source)}</p>
+              <h3>🎥 ${escapeHtml(homeName)} VS ${escapeHtml(awayName)}</h3>
+              <p>🏆 ${escapeHtml(tournament)} | ${score ? escapeHtml(score) : ''}</p>
               <div class="stream-link-box">${escapeHtml(streamUrl)}</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
-                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${streamUrl.replace(/'/g, "\\'")}').then(()=>window._showToast('✅ تم النسخ'))">📋 نسخ الرابط</button>
-                <button class="btn btn-sm" onclick="window.open('${streamUrl.replace(/'/g, "\\'")}', '_blank')">🔗 فتح في تبويب جديد</button>
+              <div class="player-controls">
+                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${streamUrl.replace(/'/g, "\\'")}').then(()=>window._showToast('✅ تم نسخ الرابط'))">📋 نسخ M3U8</button>
+                <button class="btn btn-sm" onclick="window.open('${streamUrl.replace(/'/g, "\\'")}', '_blank')">🔗 فتح الرابط</button>
               </div>
               <div id="videoPlayerContainer" style="margin-top:12px;">
                 <video id="streamVideo" controls style="width:100%;border-radius:12px;background:#000;" playsinline></video>
-                <div style="display:flex;gap:8px;margin-top:8px;">
+                <div class="player-controls">
                   <button class="btn btn-sm btn-primary" id="playBtn">▶️ تشغيل</button>
                   <button class="btn btn-sm" id="stopBtn">⏹ إيقاف</button>
+                  <span id="loadingIndicator" style="display:none;margin-right:8px;"><span class="spinner"></span> جاري التحميل...</span>
                 </div>
                 <p id="videoError" style="color:var(--red);margin-top:8px;display:none;"></p>
               </div>
-              <details style="margin-top:12px;"><summary>📦 JSON الخام</summary><pre style="font-size:0.7em;max-height:200px;overflow:auto;background:#0d1117;padding:10px;border-radius:8px;">${JSON.stringify(responseData,null,2)}</pre></details>
+              <div class="diag-details" id="streamDiag">
+                <h4>📊 تشخيص البث</h4>
+                <div>🔗 رابط /link/{id}: <code>/link/${matchId}</code></div>
+                <div>📡 HTTP Status: ${diag.status || '-'}</div>
+                <div>⏱️ Response Time: ${diag.time || '-'} ms</div>
+                <div>🔗 الرابط الأصلي من API: <code>${escapeHtml(diag.originalUrl || '-')}</code></div>
+                <div>🎯 رابط M3U8 المستخرج: <code>${escapeHtml(streamUrl)}</code></div>
+                <div>📄 صفحة وسيطة: ${diag.isIntermediate ? 'نعم' : 'لا'}</div>
+                <div>📺 HLS مدعوم: ${Hls.isSupported() ? 'نعم' : 'لا (قد تحتاج Safari)'}</div>
+                <div id="hlsManifestStatus">📜 Manifest: لم يتم التحميل بعد</div>
+                <div id="hlsErrorDetail"></div>
+              </div>
+              <details style="margin-top:12px;"><summary>📦 JSON الخام من /link</summary><pre style="font-size:0.7em;max-height:200px;overflow:auto;background:#0d1117;padding:10px;border-radius:8px;">${JSON.stringify(result.response,null,2)}</pre></details>
             `;
                 modalContent.innerHTML = html;
-                // Setup video player after DOM update
-                setTimeout(() => setupVideoPlayer(streamUrl, isHls), 200);
+                setTimeout(() => setupVideoPlayer(streamUrl, isHls, matchId), 200);
             };
 
-            function setupVideoPlayer(streamUrl, isHls) {
+            function setupVideoPlayer(streamUrl, isHls, matchId) {
                 const video = document.getElementById('streamVideo');
                 const playBtn = document.getElementById('playBtn');
                 const stopBtn = document.getElementById('stopBtn');
                 const errorP = document.getElementById('videoError');
+                const loadingInd = document.getElementById('loadingIndicator');
+                const manifestStatus = document.getElementById('hlsManifestStatus');
+                const errorDetail = document.getElementById('hlsErrorDetail');
+
                 if (!video) return;
-                // Destroy previous instance
                 if (window._hlsInstance) {
                     window._hlsInstance.destroy();
                     window._hlsInstance = null;
@@ -1376,41 +1384,87 @@
                 video.removeAttribute('src');
                 video.load();
                 errorP.style.display = 'none';
+                if (manifestStatus) manifestStatus.textContent = '📜 Manifest: لم يتم التحميل بعد';
+                if (errorDetail) errorDetail.innerHTML = '';
 
                 function showError(msg) {
                     errorP.textContent = '❌ ' + msg;
                     errorP.style.display = 'block';
+                    if (errorDetail) errorDetail.innerHTML += '<div>❌ ' + msg + '</div>';
+                }
+
+                function showManifestLoaded() {
+                    if (manifestStatus) manifestStatus.textContent = '📜 Manifest: تم التحميل بنجاح ✅';
                 }
 
                 playBtn.onclick = () => {
                     errorP.style.display = 'none';
+                    if (loadingInd) loadingInd.style.display = 'inline-block';
                     if (isHls && Hls.isSupported()) {
                         if (window._hlsInstance) window._hlsInstance.destroy();
                         const hls = new Hls({
                             debug: false,
                             enableWorker: true,
                             lowLatencyMode: true,
+                            manifestLoadingTimeOut: 15000,
+                            manifestLoadingMaxRetry: 2,
+                            levelLoadingTimeOut: 10000,
                         });
                         window._hlsInstance = hls;
                         hls.loadSource(streamUrl);
                         hls.attachMedia(video);
                         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            if (loadingInd) loadingInd.style.display = 'none';
+                            showManifestLoaded();
                             video.play().catch(e => showError('فشل التشغيل: ' + e.message));
                         });
                         hls.on(Hls.Events.ERROR, (event, data) => {
+                            if (loadingInd) loadingInd.style.display = 'none';
+                            let errMsg = '';
                             if (data.fatal) {
-                                showError('خطأ HLS فادح: ' + data.type + ' - ' + (data.details || ''));
-                                hls.destroy();
-                                window._hlsInstance = null;
+                                switch (data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        errMsg = 'خطأ شبكة (networkError). جاري محاولة إعادة التحميل...';
+                                        hls.startLoad();
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        errMsg = 'خطأ وسائط (mediaError). محاولة استرداد...';
+                                        hls.recoverMediaError();
+                                        break;
+                                    default:
+                                        errMsg = 'خطأ فادح غير قابل للاسترداد: ' + data.type + ' - ' + (data
+                                            .details || '');
+                                        hls.destroy();
+                                        window._hlsInstance = null;
+                                        break;
+                                }
+                                if (errMsg) showError(errMsg);
+                                if (errorDetail) errorDetail.innerHTML +=
+                                    '<div>⚠️ HLS Error: ' + data.type + ' | ' + (data.details || '') +
+                                    ' | fatal: ' + data.fatal + '</div>';
+                            } else {
+                                if (errorDetail) errorDetail.innerHTML +=
+                                    '<div>⚠️ HLS non-fatal: ' + data.type + ' | ' + (data.details || '') +
+                                    '</div>';
                             }
                         });
+                        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                            safeLog('HLS: media attached');
+                        });
+                        hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                            safeLog('HLS: level loaded', data);
+                        });
                     } else if (isHls && !Hls.isSupported()) {
-                        // Try native HLS (Safari)
                         video.src = streamUrl;
-                        video.play().catch(e => showError('فشل التشغيل (ربما لا يدعم المتصفح HLS): ' + e.message));
+                        video.play().then(() => {
+                            if (loadingInd) loadingInd.style.display = 'none';
+                            showManifestLoaded();
+                        }).catch(e => showError('فشل التشغيل (ربما لا يدعم المتصفح HLS): ' + e.message));
                     } else {
                         video.src = streamUrl;
-                        video.play().catch(e => showError('فشل التشغيل: ' + e.message));
+                        video.play().then(() => {
+                            if (loadingInd) loadingInd.style.display = 'none';
+                        }).catch(e => showError('فشل التشغيل: ' + e.message));
                     }
                 };
 
@@ -1422,10 +1476,23 @@
                     }
                     video.removeAttribute('src');
                     video.load();
+                    if (loadingInd) loadingInd.style.display = 'none';
                 };
 
                 video.onerror = () => {
-                    showError('فشل تحميل الفيديو. الرابط قد يكون غير صالح أو لا يدعمه المتصفح.');
+                    if (loadingInd) loadingInd.style.display = 'none';
+                    const err = video.error;
+                    let msg = 'فشل تحميل الفيديو.';
+                    if (err) {
+                        msg += ' (code: ' + err.code + ')';
+                        if (err.code === MediaError.MEDIA_ERR_NETWORK) msg += ' - خطأ شبكة';
+                        if (err.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) msg += ' - المصدر غير مدعوم';
+                    }
+                    showError(msg);
+                };
+
+                video.onplaying = () => {
+                    if (loadingInd) loadingInd.style.display = 'none';
                 };
             }
 
@@ -1551,7 +1618,6 @@
             // --- Initial auto-fetch ---
             if (rapidApiKey) {
                 updateKeyStatus();
-                // Auto fetch on load with small delay
                 setTimeout(() => {
                     if (!isRefreshing) fetchAllMatches();
                 }, 600);
