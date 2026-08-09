@@ -1,377 +1,1574 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Football Live API Test</title>
-
-<style>
-body {
-    background:#111;
-    color:#fff;
-    font-family:Arial,sans-serif;
-    padding:20px;
-}
-
-h1 { color:#58a6ff; }
-
-button {
-    background:#238636;
-    color:white;
-    border:0;
-    padding:10px 15px;
-    border-radius:6px;
-    cursor:pointer;
-    margin:5px;
-}
-
-.match {
-    background:#1c2128;
-    border:1px solid #30363d;
-    padding:15px;
-    margin:10px 0;
-    border-radius:8px;
-}
-
-.live {
-    color:#ff4d4d;
-    font-weight:bold;
-}
-
-#video {
-    width:100%;
-    max-width:800px;
-    background:#000;
-    margin-top:20px;
-}
-
-#log {
-    background:#000;
-    padding:10px;
-    white-space:pre-wrap;
-    word-break:break-all;
-    margin-top:20px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Football Live Stream API Tester</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        :root {
+            --bg: #0a0e14;
+            --surface: #131820;
+            --surface2: #1a1f2b;
+            --border: #252b38;
+            --text: #e0e0e0;
+            --text2: #a0a8b8;
+            --accent: #3b9eff;
+            --green: #00d68f;
+            --red: #ff4757;
+            --orange: #ffaa00;
+            --yellow: #ffe066;
+            --live: #ff1744;
+            --radius: 14px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, 'Cairo', sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            direction: rtl;
+            padding-bottom: 60px;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 18px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow);
+        }
+        header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo {
+            font-size: 1.6em;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .logo span {
+            color: var(--accent);
+        }
+        .api-key-area {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .api-key-area input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 25px;
+            width: 260px;
+            font-size: 0.9em;
+            transition: all 0.25s;
+        }
+        .api-key-area input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 158, 255, 0.12);
+        }
+        .btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.22s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+        }
+        .btn:hover {
+            background: #252d3a;
+            border-color: #3d4a5c;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+            font-weight: 700;
+        }
+        .btn-primary:hover {
+            background: #2b8ae0;
+            border-color: #2b8ae0;
+        }
+        .btn-danger {
+            background: var(--red);
+            border-color: var(--red);
+            color: #fff;
+        }
+        .btn-sm {
+            padding: 7px 14px;
+            font-size: 0.8em;
+            border-radius: 20px;
+        }
+        .btn-xs {
+            padding: 5px 10px;
+            font-size: 0.72em;
+            border-radius: 16px;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: all 0.25s;
+        }
+        .stat-card:hover {
+            border-color: #3d4a5c;
+        }
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .stat-card .label {
+            font-size: 0.8em;
+            color: var(--text2);
+            margin-top: 4px;
+        }
+        .stat-card.api-ok {
+            border-left: 4px solid var(--green);
+        }
+        .stat-card.api-err {
+            border-left: 4px solid var(--red);
+        }
+        .stat-card.api-loading {
+            border-left: 4px solid var(--orange);
+        }
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin: 24px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 14px 0;
+            align-items: center;
+        }
+        .toolbar input[type="text"] {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 16px;
+            border-radius: 25px;
+            flex: 1;
+            min-width: 200px;
+            font-size: 0.9em;
+        }
+        .toolbar input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .toolbar select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 14px;
+        }
+        .match-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            transition: all 0.25s;
+            position: relative;
+            cursor: pointer;
+        }
+        .match-card:hover {
+            border-color: #3d4a5c;
+            transform: translateY(-2px);
+        }
+        .match-card.live-card {
+            border-right: 4px solid var(--live);
+            animation: livePulse 1.8s infinite;
+        }
+        @keyframes livePulse {
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(255, 23, 68, 0);
+            }
+        }
+        .live-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--live);
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.7em;
+            padding: 4px 10px;
+            border-radius: 12px;
+            animation: liveBlink 1s infinite;
+        }
+        @keyframes liveBlink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .match-teams {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            font-weight: 700;
+            font-size: 1.1em;
+            text-align: center;
+            flex-wrap: wrap;
+        }
+        .match-teams img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            object-fit: contain;
+            background: #1e2430;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+        .match-score {
+            font-size: 2em;
+            font-weight: 900;
+            color: #fff;
+            min-width: 60px;
+            text-align: center;
+        }
+        .match-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.78em;
+            color: var(--text2);
+        }
+        .match-meta span {
+            background: var(--surface2);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .match-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 14px;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+        .badge-live {
+            background: #ff174422;
+            color: #ff1744;
+        }
+        .badge-upcoming {
+            background: #ffaa0022;
+            color: #ffaa00;
+        }
+        .badge-finished {
+            background: #00d68f22;
+            color: #00d68f;
+        }
+        .badge-unknown {
+            background: #88888822;
+            color: #aaa;
+        }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+            z-index: 10;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff15;
+        }
+        .modal-close:hover {
+            background: #ffffff30;
+        }
+        video {
+            width: 100%;
+            border-radius: var(--radius);
+            background: #000;
+            max-height: 420px;
+        }
+        .stream-link-box {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.8em;
+            color: var(--accent);
+            margin: 8px 0;
+            user-select: all;
+        }
+        .diagnostics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        @media(max-width:700px) {
+            .diagnostics-grid {
+                grid-template-columns: 1fr;
+            }
+            .matches-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .diag-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+        .diag-card h4 {
+            margin-bottom: 10px;
+        }
+        .json-viewer {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            max-height: 400px;
+            overflow: auto;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.78em;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #c9d1d9;
+            line-height: 1.5;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1f2b;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            z-index: 999;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            animation: toastIn 0.3s ease;
+            white-space: nowrap;
+            max-width: 90vw;
+            text-align: center;
+        }
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .warning-box {
+            background: #ffaa0018;
+            border: 1px solid #ffaa0044;
+            border-radius: var(--radius);
+            padding: 14px;
+            margin: 12px 0;
+            color: var(--orange);
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .text-green {
+            color: var(--green);
+        }
+        .text-red {
+            color: var(--red);
+        }
+        .text-orange {
+            color: var(--orange);
+        }
+        .text-accent {
+            color: var(--accent);
+        }
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #fff3;
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
-
 <body>
+    <header>
+        <div class="container">
+            <div class="logo">⚽ <span>Football Live Stream</span> Tester</div>
+            <div class="api-key-area">
+                <input type="password" id="apiKeyInput" placeholder="🔑 RapidAPI Key" autocomplete="off">
+                <button class="btn btn-sm" id="saveKeyBtn">💾 حفظ</button>
+                <button class="btn btn-sm btn-primary" id="testConnBtn">🔌 اختبار الاتصال</button>
+                <span id="keyStatus" style="font-size:0.75em;color:var(--text2);"></span>
+            </div>
+        </div>
+    </header>
 
-<h1>⚽ Football Live Stream API</h1>
+    <div class="container">
+        <div class="warning-box" id="warningBox">
+            ⚠️ تنبيه: وضع RapidAPI Key داخل HTML يعني أن المفتاح مرئي في المتصفح. هذا للاختبار فقط وليس لإنتاج Backend.
+        </div>
 
-<button onclick="loadMatches()">🔄 تحميل المباريات</button>
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card api-loading" id="statApiStatus"><div class="value">🟡</div><div class="label">حالة API</div></div>
+            <div class="stat-card"><div class="value" id="statTotal">-</div><div class="label">إجمالي المباريات</div></div>
+            <div class="stat-card"><div class="value text-red" id="statLive">-</div><div class="label">🔴 مباشر الآن</div></div>
+            <div class="stat-card"><div class="value text-green" id="statFinished">-</div><div class="label">✅ انتهت</div></div>
+            <div class="stat-card"><div class="value text-orange" id="statUpcoming">-</div><div class="label">🕐 قادمة</div></div>
+            <div class="stat-card"><div class="value" id="statLastUpdate">-</div><div class="label">آخر تحديث</div></div>
+        </div>
 
-<div id="matches">اضغط تحميل المباريات</div>
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <input type="text" id="searchInput" placeholder="🔍 بحث عن فريق، بطولة، ID...">
+            <select id="filterStatus">
+                <option value="all">الكل</option>
+                <option value="live">🔴 مباشر</option>
+                <option value="upcoming">🕐 قادمة</option>
+                <option value="finished">✅ انتهت</option>
+                <option value="unknown">❓ غير معروف</option>
+            </select>
+            <select id="sortBy">
+                <option value="default">الترتيب الافتراضي</option>
+                <option value="live_first">🔴 Live أولًا</option>
+                <option value="newest">الأحدث</option>
+                <option value="closest">الأقرب للبدء</option>
+                <option value="tournament">حسب البطولة</option>
+                <option value="team">حسب الفريق</option>
+            </select>
+            <button class="btn btn-primary" id="refreshBtn">🔄 تحديث المباريات</button>
+            <select id="autoRefresh">
+                <option value="off">Auto Refresh: OFF</option>
+                <option value="30">30 ثانية</option>
+                <option value="60">60 ثانية</option>
+                <option value="300">5 دقائق</option>
+            </select>
+            <span id="refreshSpinner" style="display:none;" class="spinner"></span>
+        </div>
 
-<video id="video" controls playsinline></video>
+        <!-- Matches Section -->
+        <div class="section-title">📋 المباريات</div>
+        <div class="matches-grid" id="matchesGrid">
+            <div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">اضغط 🔄 تحديث المباريات أو انتظر التحميل التلقائي...</div>
+        </div>
 
-<div id="log"></div>
+        <!-- Diagnostics -->
+        <div class="section-title">🔧 API Diagnostics</div>
+        <div class="diagnostics-grid">
+            <div class="diag-card" id="diagAllMatch">
+                <h4>📌 Endpoint: /all-match</h4>
+                <div>HTTP Status: <span id="diagAllStatus">-</span></div>
+                <div>Response Time: <span id="diagAllTime">-</span> ms</div>
+                <div>عدد البيانات: <span id="diagAllCount">-</span></div>
+                <div>حالة الاتصال: <span id="diagAllConn">-</span></div>
+            </div>
+            <div class="diag-card" id="diagLink">
+                <h4>📌 Endpoint: /link/{id}</h4>
+                <div>HTTP Status: <span id="diagLinkStatus">-</span></div>
+                <div>Response Time: <span id="diagLinkTime">-</span> ms</div>
+                <div>رابط بث: <span id="diagLinkFound">-</span></div>
+                <div>حالة الاتصال: <span id="diagLinkConn">-</span></div>
+            </div>
+        </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+        <!-- JSON Viewer -->
+        <div class="section-title">📦 Raw API Response</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <button class="btn btn-sm" id="showAllMatchJson">عرض /all-match JSON</button>
+            <button class="btn btn-sm" id="showLinkJson">عرض /link/{id} JSON</button>
+            <button class="btn btn-sm" id="copyJsonBtn">📋 نسخ JSON</button>
+            <button class="btn btn-sm" id="clearJsonBtn">🗑 مسح</button>
+        </div>
+        <div class="json-viewer" id="jsonViewer">لا يوجد بيانات بعد. اضغط على زر لعرض JSON.</div>
+    </div>
 
-<script>
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay" style="display:none;">
+        <div class="modal" id="modalContent"></div>
+    </div>
 
-// تم تحديث المفتاح ليطابق المفتاح الموجود في مثال curl
-const API_KEY = "ceb4752baemsh66f9c20d13e570dp11cb61jsn8bd1cc4c986f";
-const HOST = "football-live-stream-api.p.rapidapi.com";
+    <!-- Toast container -->
+    <div id="toastContainer"></div>
 
-const headers = {
-    "Content-Type": "application/json",
-    "x-rapidapi-host": HOST,
-    "x-rapidapi-key": API_KEY
-};
+    <script>
+        (function() {
+            // --- State ---
+            const API_BASE = 'https://football-live-stream-api.p.rapidapi.com';
+            const API_HOST = 'football-live-stream-api.p.rapidapi.com';
+            let rapidApiKey = localStorage.getItem('fb_stream_key') || '';
+            let allMatchesData = [];
+            let lastAllMatchResponse = null;
+            let lastLinkResponse = null;
+            let lastAllMatchDiag = { status: null, time: null, count: null };
+            let lastLinkDiag = { status: null, time: null, found: null };
+            let isRefreshing = false;
+            let autoRefreshInterval = null;
+            let autoRefreshSeconds = null;
+            let rateLimitActive = false;
+            let rateLimitUntil = 0;
 
-const matchesDiv = document.getElementById("matches");
-const log = document.getElementById("log");
-const video = document.getElementById("video");
+            // --- DOM refs ---
+            const $ = (sel) => document.querySelector(sel);
+            const $$ = (sel) => document.querySelectorAll(sel);
 
-function showLog(data) {
-    log.textContent =
-        typeof data === "string"
-        ? data
-        : JSON.stringify(data, null, 2);
-}
+            const apiKeyInput = $('#apiKeyInput');
+            const saveKeyBtn = $('#saveKeyBtn');
+            const testConnBtn = $('#testConnBtn');
+            const keyStatus = $('#keyStatus');
+            const refreshBtn = $('#refreshBtn');
+            const autoRefreshSelect = $('#autoRefresh');
+            const refreshSpinner = $('#refreshSpinner');
+            const searchInput = $('#searchInput');
+            const filterStatus = $('#filterStatus');
+            const sortBy = $('#sortBy');
+            const matchesGrid = $('#matchesGrid');
+            const modalOverlay = $('#modalOverlay');
+            const modalContent = $('#modalContent');
+            const jsonViewer = $('#jsonViewer');
+            const toastContainer = $('#toastContainer');
+            const warningBox = $('#warningBox');
 
+            // Stats
+            const statApiStatus = $('#statApiStatus');
+            const statTotal = $('#statTotal');
+            const statLive = $('#statLive');
+            const statFinished = $('#statFinished');
+            const statUpcoming = $('#statUpcoming');
+            const statLastUpdate = $('#statLastUpdate');
 
-async function loadMatches() {
+            // Diag
+            const diagAllStatus = $('#diagAllStatus');
+            const diagAllTime = $('#diagAllTime');
+            const diagAllCount = $('#diagAllCount');
+            const diagAllConn = $('#diagAllConn');
+            const diagLinkStatus = $('#diagLinkStatus');
+            const diagLinkTime = $('#diagLinkTime');
+            const diagLinkFound = $('#diagLinkFound');
+            const diagLinkConn = $('#diagLinkConn');
 
-    matchesDiv.innerHTML = "⏳ جاري تحميل المباريات...";
+            // --- Init ---
+            if (rapidApiKey) {
+                apiKeyInput.value = rapidApiKey;
+                updateKeyStatus();
+            }
 
-    try {
+            function updateKeyStatus() {
+                if (rapidApiKey) {
+                    const masked = rapidApiKey.length > 8 ?
+                        '*'.repeat(rapidApiKey.length - 4) + rapidApiKey.slice(-4) :
+                        '****';
+                    keyStatus.textContent = '✅ محفوظ: ' + masked;
+                    keyStatus.style.color = 'var(--green)';
+                } else {
+                    keyStatus.textContent = '❌ لم يتم حفظ مفتاح';
+                    keyStatus.style.color = 'var(--red)';
+                }
+            }
 
-        const response = await fetch(
-            "https://" + HOST + "/all-match",
-            { headers }
-        );
+            // --- Toast ---
+            function showToast(msg, duration = 3000) {
+                const t = document.createElement('div');
+                t.className = 'toast';
+                t.textContent = msg;
+                toastContainer.appendChild(t);
+                setTimeout(() => t.remove(), duration);
+            }
 
-        const text = await response.text();
+            // --- Console safe logging ---
+            function safeLog(...args) {
+                // Never log the API key
+                const sanitized = args.map(a => {
+                    if (typeof a === 'string' && a.includes(rapidApiKey) && rapidApiKey.length >
+                        4) {
+                        return a.replace(rapidApiKey, '***REDACTED***');
+                    }
+                    return a;
+                });
+                console.log(...sanitized);
+            }
 
-        console.log("ALL MATCH RESPONSE:", text);
+            // --- Headers ---
+            function getHeaders() {
+                return {
+                    'x-rapidapi-host': API_HOST,
+                    'x-rapidapi-key': rapidApiKey,
+                    'Content-Type': 'application/json'
+                };
+            }
 
-        let data;
+            // --- Rate limit check ---
+            function checkRateLimit() {
+                if (rateLimitActive && Date.now() < rateLimitUntil) {
+                    const remain = Math.ceil((rateLimitUntil - Date.now()) / 1000);
+                    showToast(`⚠️ تم تجاوز حد الطلبات. انتظر ${remain} ثانية...`, 4000);
+                    return true;
+                }
+                if (rateLimitActive && Date.now() >= rateLimitUntil) {
+                    rateLimitActive = false;
+                    rateLimitUntil = 0;
+                    showToast('✅ انتهت فترة الحظر، يمكنك المحاولة الآن.', 3000);
+                }
+                return rateLimitActive;
+            }
 
-        try {
-            data = JSON.parse(text);
-        } catch {
-            data = text;
-        }
+            function setRateLimit(retryAfterSec = 60) {
+                rateLimitActive = true;
+                rateLimitUntil = Date.now() + retryAfterSec * 1000;
+                stopAutoRefresh();
+                autoRefreshSelect.value = 'off';
+                showToast('⚠️ تم تجاوز حد الطلبات (HTTP 429). تم إيقاف التحديث التلقائي. انتظر ' + retryAfterSec +
+                    ' ثانية.', 6000);
+                updateApiStatusBadge('rate_limited');
+            }
 
-        showLog(data);
+            // --- API Status Badge ---
+            function updateApiStatusBadge(state) {
+                statApiStatus.classList.remove('api-ok', 'api-err', 'api-loading');
+                if (state === 'ok') {
+                    statApiStatus.classList.add('api-ok');
+                    statApiStatus.querySelector('.value').textContent = '🟢';
+                    statApiStatus.querySelector('.label').textContent = 'API يعمل';
+                } else if (state === 'error') {
+                    statApiStatus.classList.add('api-err');
+                    statApiStatus.querySelector('.value').textContent = '🔴';
+                    statApiStatus.querySelector('.label').textContent = 'API لا يعمل';
+                } else if (state === 'rate_limited') {
+                    statApiStatus.classList.add('api-err');
+                    statApiStatus.querySelector('.value').textContent = '🔴';
+                    statApiStatus.querySelector('.label').textContent = '429 - تجاوز الحد';
+                } else {
+                    statApiStatus.classList.add('api-loading');
+                    statApiStatus.querySelector('.value').textContent = '🟡';
+                    statApiStatus.querySelector('.label').textContent = 'جاري الاتصال';
+                }
+            }
 
-        let matches = [];
+            // --- Flexible JSON parser ---
+            function extractMatchesArray(data) {
+                if (Array.isArray(data)) return data;
+                if (data && typeof data === 'object') {
+                    for (const key of ['data', 'matches', 'results', 'fixtures', 'games', 'items', 'response',
+                            'body'
+                        ]) {
+                        if (Array.isArray(data[key])) return data[key];
+                        if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].data)) return data[
+                            key].data;
+                        if (data[key] && typeof data[key] === 'object' && Array.isArray(data[key].matches)) return data[
+                            key].matches;
+                    }
+                    // try to find any array in the object
+                    for (const val of Object.values(data)) {
+                        if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') return val;
+                    }
+                }
+                return null;
+            }
 
-        if (Array.isArray(data)) {
-            matches = data;
-        }
-        else if (data.matches) {
-            matches = data.matches;
-        }
-        else if (data.data) {
-            matches = Array.isArray(data.data)
-                ? data.data
-                : [];
-        }
-        else if (data.results) {
-            matches = data.results;
-        }
+            function detectMatchId(match) {
+                if (!match || typeof match !== 'object') return null;
+                for (const key of ['id', 'match_id', 'matchId', 'game_id', 'fixture_id', 'event_id', 'ID', 'Id']) {
+                    if (match[key] !== undefined && match[key] !== null) return String(match[key]);
+                }
+                return null;
+            }
 
-        if (!matches.length) {
+            function detectMatchStatus(match) {
+                if (!match || typeof match !== 'object') return 'unknown';
+                const statusKeys = ['status', 'state', 'match_status', 'live', 'is_live', 'started', 'finished',
+                    'matchState', 'game_status', 'playing'
+                ];
+                for (const key of statusKeys) {
+                    const val = match[key];
+                    if (val === undefined || val === null) continue;
+                    const v = String(val).toLowerCase().trim();
+                    if (['live', 'playing', 'in_play', 'inplay', '1', 'true', 'yes', 'ongoing', 'active'].includes(
+                            v)) return 'live';
+                    if (['finished', 'ended', 'completed', 'ft', 'full_time', 'fulltime', '2', 'done'].includes(v))
+                        return 'finished';
+                    if (['scheduled', 'upcoming', 'not_started', 'notstarted', 'pre', '0', 'future', 'pending',
+                            'pre_match'
+                        ].includes(v)) return 'upcoming';
+                    if (v.includes('live') || v.includes('play')) return 'live';
+                    if (v.includes('finish') || v.includes('end') || v.includes('complet')) return 'finished';
+                    if (v.includes('schedul') || v.includes('upcom') || v.includes('not_start')) return 'upcoming';
+                }
+                // check boolean live flag
+                if (match.live === true || match.is_live === true || match.isLive === true) return 'live';
+                if (match.finished === true || match.ended === true || match.is_finished === true) return 'finished';
+                // check if has score and time suggests live
+                if ((match.score || match.goals || match.result) && !match.finished && !match.ended) return 'live';
+                return 'unknown';
+            }
 
-            matchesDiv.innerHTML =
-                "<p>❌ لم يتم العثور على مباريات.</p>" +
-                "<p>انظر الرد الكامل بالأسفل.</p>";
+            function detectTeamName(match, side) {
+                const prefixes = side === 'home' ? ['home', 'team1', 'local', 'host'] : ['away', 'team2', 'visitor',
+                    'guest'
+                ];
+                for (const p of prefixes) {
+                    for (const suf of ['_team', 'Team', '_name', 'Name', '']) {
+                        const key = p + suf;
+                        if (match[key] && typeof match[key] === 'string') return match[key];
+                        if (match[key] && typeof match[key] === 'object' && match[key].name) return match[key].name;
+                    }
+                }
+                // Try nested team object
+                if (match.home && match.home.name) return match.home.name;
+                if (match.away && match.away.name) return match.away.name;
+                if (match.teams && match.teams.home && match.teams.home.name) return match.teams.home.name;
+                if (match.teams && match.teams.away && match.teams.away.name) return match.teams.away.name;
+                return side === 'home' ? 'الفريق الأول' : 'الفريق الثاني';
+            }
 
-            return;
-        }
+            function detectTeamLogo(match, side) {
+                const prefixes = side === 'home' ? ['home', 'team1', 'local', 'host'] : ['away', 'team2', 'visitor',
+                    'guest'
+                ];
+                for (const p of prefixes) {
+                    for (const suf of ['_logo', 'Logo', '_image', 'Image', '_icon', 'Icon', '_badge', 'Badge']) {
+                        const key = p + suf;
+                        if (match[key] && typeof match[key] === 'string' && match[key].startsWith('http')) return match[
+                            key];
+                    }
+                }
+                if (match.home && match.home.logo && typeof match.home.logo === 'string') return match.home.logo;
+                if (match.away && match.away.logo && typeof match.away.logo === 'string') return match.away.logo;
+                if (match.teams && match.teams.home && match.teams.home.logo) return match.teams.home.logo;
+                if (match.teams && match.teams.away && match.teams.away.logo) return match.teams.away.logo;
+                return '';
+            }
 
-        matchesDiv.innerHTML = "";
+            function detectScore(match) {
+                if (match.score && typeof match.score === 'string') return match.score;
+                if (match.score && typeof match.score === 'object') {
+                    const h = match.score.home ?? match.score.team1 ?? match.score.local ?? '-';
+                    const a = match.score.away ?? match.score.team2 ?? match.score.visitor ?? '-';
+                    return `${h} - ${a}`;
+                }
+                const homeGoals = match.home_goals ?? match.homeGoals ?? match.goals_home ?? match.local_goals;
+                const awayGoals = match.away_goals ?? match.awayGoals ?? match.goals_away ?? match.visitor_goals;
+                if (homeGoals !== undefined && awayGoals !== undefined) return `${homeGoals} - ${awayGoals}`;
+                if (match.result && typeof match.result === 'string') return match.result;
+                return null;
+            }
 
-        matches.forEach(match => {
+            function detectTournament(match) {
+                for (const key of ['tournament', 'league', 'competition', 'championship', 'cup', 'event', 'category',
+                        'tournament_name', 'league_name'
+                    ]) {
+                    if (match[key] && typeof match[key] === 'string') return match[key];
+                    if (match[key] && typeof match[key] === 'object' && match[key].name) return match[key].name;
+                }
+                return 'غير معروف';
+            }
 
-            const id =
-                match.id ||
-                match.match_id ||
-                match.matchId;
+            function detectMatchTime(match) {
+                for (const key of ['time', 'match_time', 'kickoff', 'kick_off', 'start_time', 'datetime', 'date_time',
+                        'scheduled'
+                    ]) {
+                    if (match[key] && typeof match[key] === 'string') return match[key];
+                }
+                if (match.date) return match.date;
+                return null;
+            }
 
-            const home =
-                match.home ||
-                match.home_team ||
-                match.homeTeam ||
-                match.team1 ||
-                "الفريق الأول";
+            // --- Stream link detection ---
+            function detectStreamUrl(data) {
+                if (!data || typeof data !== 'object') return null;
+                // Direct string response
+                if (typeof data === 'string' && (data.startsWith('http://') || data.startsWith('https://'))) return data;
+                const keys = ['url', 'stream', 'stream_url', 'm3u8', 'link', 'stream_link', 'source', 'video_url',
+                    'play_url', 'hls', 'hls_url', 'src'
+                ];
+                for (const key of keys) {
+                    const val = data[key];
+                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) return val;
+                    if (typeof val === 'object' && val !== null) {
+                        for (const subKey of ['url', 'link', 'src', 'm3u8', 'hls']) {
+                            if (typeof val[subKey] === 'string' && val[subKey].startsWith('http')) return val[subKey];
+                        }
+                    }
+                }
+                // Search all string values
+                for (const val of Object.values(data)) {
+                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://')) && (val
+                            .includes('m3u8') || val.includes('stream') || val.includes('video') || val.includes(
+                                'live'))) {
+                        return val;
+                    }
+                }
+                // Any http link as fallback
+                for (const val of Object.values(data)) {
+                    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) return val;
+                }
+                return null;
+            }
 
-            const away =
-                match.away ||
-                match.away_team ||
-                match.awayTeam ||
-                match.team2 ||
-                "الفريق الثاني";
+            function detectStreamQuality(data) {
+                for (const key of ['quality', 'resolution', 'bitrate', 'label']) {
+                    if (data[key]) return String(data[key]);
+                }
+                return 'غير معروفة';
+            }
 
-            const status =
-                match.status ||
-                match.state ||
-                "";
+            function detectStreamSource(data) {
+                for (const key of ['source', 'provider', 'platform', 'cdn']) {
+                    if (data[key] && typeof data[key] === 'string') return data[key];
+                }
+                return 'غير معروف';
+            }
 
-            const div = document.createElement("div");
+            function isHlsCandidate(url) {
+                return url.includes('.m3u8') || url.includes('m3u8?') || url.includes('hls');
+            }
 
-            div.className = "match";
+            // --- API Calls ---
+            async function callApi(endpoint, diagObjRef) {
+                if (!rapidApiKey) {
+                    throw new Error('NO_KEY');
+                }
+                if (checkRateLimit()) {
+                    throw new Error('RATE_LIMITED');
+                }
+                const url = API_BASE + endpoint;
+                const startTime = performance.now();
+                safeLog(`[API] GET ${endpoint}`);
+                let response;
+                try {
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: getHeaders()
+                    });
+                } catch (err) {
+                    safeLog(`[API] Network Error: ${err.message}`);
+                    if (diagObjRef) {
+                        diagObjRef.status = 'Network Error';
+                        diagObjRef.time = Math.round(performance.now() - startTime);
+                        diagObjRef.conn = 'فشل الاتصال';
+                    }
+                    throw new Error('NETWORK_ERROR: ' + err.message);
+                }
+                const elapsed = Math.round(performance.now() - startTime);
+                safeLog(`[API] Status: ${response.status} | Time: ${elapsed}ms`);
+                if (diagObjRef) {
+                    diagObjRef.status = response.status;
+                    diagObjRef.time = elapsed;
+                    diagObjRef.conn = response.ok ? 'نجح' : 'فشل';
+                }
+                let body;
+                const contentType = response.headers.get('content-type') || '';
+                try {
+                    if (contentType.includes('application/json')) {
+                        body = await response.json();
+                    } else {
+                        body = await response.text();
+                    }
+                } catch (e) {
+                    body = await response.text();
+                }
+                if (!response.ok) {
+                    const err = new Error(`HTTP_${response.status}`);
+                    err.status = response.status;
+                    err.body = body;
+                    err.time = elapsed;
+                    throw err;
+                }
+                return { body, status: response.status, time: elapsed };
+            }
 
-            div.innerHTML = `
-                <h3>${home} 🆚 ${away}</h3>
+            async function fetchAllMatches() {
+                if (isRefreshing) return;
+                if (checkRateLimit()) return;
+                isRefreshing = true;
+                refreshSpinner.style.display = 'inline-block';
+                refreshBtn.disabled = true;
+                updateApiStatusBadge('loading');
+                try {
+                    const result = await callApi('/all-match', lastAllMatchDiag);
+                    lastAllMatchResponse = result.body;
+                    const matches = extractMatchesArray(result.body);
+                    if (matches === null) {
+                        // No array found - show raw
+                        allMatchesData = [];
+                        lastAllMatchDiag.count = 0;
+                        updateApiStatusBadge('error');
+                        showToast('⚠️ لم يتم العثور على مصفوفة مباريات في الاستجابة. راجع JSON الخام.', 5000);
+                    } else {
+                        allMatchesData = matches;
+                        lastAllMatchDiag.count = matches.length;
+                        updateApiStatusBadge('ok');
+                    }
+                    updateAllMatchDiagUI();
+                    updateStats();
+                    renderMatches();
+                    statLastUpdate.textContent = new Date().toLocaleTimeString('ar-SA');
+                    safeLog(`[API] Matches parsed: ${allMatchesData.length}`);
+                } catch (err) {
+                    safeLog(`[API] Error fetching all-match: ${err.message}`);
+                    lastAllMatchResponse = err.body || null;
+                    if (err.message === 'NO_KEY') {
+                        showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
+                        updateApiStatusBadge('error');
+                    } else if (err.message === 'RATE_LIMITED') {
+                        // Already handled
+                    } else if (err.status === 429) {
+                        setRateLimit(60);
+                        lastAllMatchDiag.status = 429;
+                        lastAllMatchDiag.conn = 'Too Many Requests';
+                    } else if (err.status === 401 || err.status === 403) {
+                        showToast('🔒 خطأ 401/403: المفتاح أو الصلاحيات قد تكون المشكلة.', 5000);
+                        updateApiStatusBadge('error');
+                        lastAllMatchDiag.status = err.status;
+                    } else if (err.status === 404) {
+                        showToast('❌ خطأ 404: Endpoint غير موجود.', 4000);
+                        updateApiStatusBadge('error');
+                    } else if (err.status >= 500) {
+                        showToast('💥 خطأ ' + err.status + ': المشكلة غالبًا من الخادم.', 5000);
+                        updateApiStatusBadge('error');
+                    } else if (err.message.startsWith('NETWORK_ERROR')) {
+                        showToast('🌐 خطأ في الشبكة أو CORS. تحقق من الاتصال.', 5000);
+                        updateApiStatusBadge('error');
+                    } else {
+                        showToast('❌ خطأ: ' + err.message, 4000);
+                        updateApiStatusBadge('error');
+                    }
+                    updateAllMatchDiagUI();
+                    allMatchesData = [];
+                    renderMatches();
+                    updateStats();
+                } finally {
+                    isRefreshing = false;
+                    refreshSpinner.style.display = 'none';
+                    refreshBtn.disabled = false;
+                }
+            }
 
-                <div>
-                    ${status ? "الحالة: " + status : ""}
-                </div>
+            async function fetchStreamLink(matchId) {
+                if (!rapidApiKey) {
+                    showToast('🔑 الرجاء إدخال RapidAPI Key أولاً.', 4000);
+                    return null;
+                }
+                if (checkRateLimit()) return null;
+                updateApiStatusBadge('loading');
+                try {
+                    const result = await callApi(`/link/${matchId}`, lastLinkDiag);
+                    lastLinkResponse = result.body;
+                    lastLinkDiag.found = detectStreamUrl(result.body) ? 'نعم' : 'لا يوجد';
+                    updateLinkDiagUI();
+                    updateApiStatusBadge('ok');
+                    return result.body;
+                } catch (err) {
+                    lastLinkResponse = err.body || null;
+                    lastLinkDiag.found = 'خطأ';
+                    if (err.status === 429) {
+                        setRateLimit(60);
+                        lastLinkDiag.status = 429;
+                    } else {
+                        lastLinkDiag.status = err.status || 'Error';
+                    }
+                    lastLinkDiag.conn = 'فشل';
+                    updateLinkDiagUI();
+                    updateApiStatusBadge('error');
+                    showToast('❌ فشل جلب رابط البث: ' + (err.status || err.message), 4000);
+                    return null;
+                }
+            }
 
-                <div>
-                    ID: ${id || "غير موجود"}
-                </div>
+            function updateAllMatchDiagUI() {
+                diagAllStatus.textContent = lastAllMatchDiag.status ?? '-';
+                diagAllTime.textContent = lastAllMatchDiag.time ?? '-';
+                diagAllCount.textContent = lastAllMatchDiag.count ?? '-';
+                diagAllConn.textContent = lastAllMatchDiag.conn ?? '-';
+                if (lastAllMatchDiag.status === 429) {
+                    diagAllStatus.textContent = '429 ⚠️';
+                    diagAllStatus.style.color = 'var(--red)';
+                } else if (lastAllMatchDiag.status === 200) {
+                    diagAllStatus.style.color = 'var(--green)';
+                } else if (lastAllMatchDiag.status) {
+                    diagAllStatus.style.color = 'var(--red)';
+                }
+            }
 
-                <button>
-                    🎥 الحصول على البث
-                </button>
+            function updateLinkDiagUI() {
+                diagLinkStatus.textContent = lastLinkDiag.status ?? '-';
+                diagLinkTime.textContent = lastLinkDiag.time ?? '-';
+                diagLinkFound.textContent = lastLinkDiag.found ?? '-';
+                diagLinkConn.textContent = lastLinkDiag.conn ?? '-';
+                if (lastLinkDiag.status === 429) {
+                    diagLinkStatus.textContent = '429 ⚠️';
+                    diagLinkStatus.style.color = 'var(--red)';
+                } else if (lastLinkDiag.status === 200) {
+                    diagLinkStatus.style.color = 'var(--green)';
+                } else if (lastLinkDiag.status) {
+                    diagLinkStatus.style.color = 'var(--red)';
+                }
+            }
+
+            function updateStats() {
+                const total = allMatchesData.length;
+                let liveCount = 0,
+                    finishedCount = 0,
+                    upcomingCount = 0,
+                    unknownCount = 0;
+                allMatchesData.forEach(m => {
+                    const s = detectMatchStatus(m);
+                    if (s === 'live') liveCount++;
+                    else if (s === 'finished') finishedCount++;
+                    else if (s === 'upcoming') upcomingCount++;
+                    else unknownCount++;
+                });
+                statTotal.textContent = total;
+                statLive.textContent = liveCount;
+                statFinished.textContent = finishedCount;
+                statUpcoming.textContent = upcomingCount;
+            }
+
+            // --- Render ---
+            function getFilteredMatches() {
+                let data = [...allMatchesData];
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                const filterVal = filterStatus.value;
+                const sortVal = sortBy.value;
+
+                if (searchTerm) {
+                    data = data.filter(m => {
+                        const home = detectTeamName(m, 'home').toLowerCase();
+                        const away = detectTeamName(m, 'away').toLowerCase();
+                        const tournament = detectTournament(m).toLowerCase();
+                        const id = detectMatchId(m)?.toLowerCase() || '';
+                        const status = detectMatchStatus(m).toLowerCase();
+                        return home.includes(searchTerm) || away.includes(searchTerm) || tournament.includes(
+                            searchTerm) || id.includes(searchTerm) || status.includes(searchTerm);
+                    });
+                }
+                if (filterVal !== 'all') {
+                    data = data.filter(m => detectMatchStatus(m) === filterVal);
+                }
+                // Sort
+                if (sortVal === 'live_first') {
+                    const priority = { live: 0, upcoming: 1, unknown: 2, finished: 3 };
+                    data.sort((a, b) => (priority[detectMatchStatus(a)] || 2) - (priority[detectMatchStatus(b)] || 2));
+                } else if (sortVal === 'newest') {
+                    data.sort((a, b) => (detectMatchTime(b) || '').localeCompare(detectMatchTime(a) || ''));
+                } else if (sortVal === 'closest') {
+                    data.sort((a, b) => (detectMatchTime(a) || '').localeCompare(detectMatchTime(b) || ''));
+                } else if (sortVal === 'tournament') {
+                    data.sort((a, b) => detectTournament(a).localeCompare(detectTournament(b)));
+                } else if (sortVal === 'team') {
+                    data.sort((a, b) => detectTeamName(a, 'home').localeCompare(detectTeamName(b, 'home')));
+                }
+                return data;
+            }
+
+            function renderMatches() {
+                const filtered = getFilteredMatches();
+                if (filtered.length === 0 && allMatchesData.length === 0) {
+                    matchesGrid.innerHTML =
+                        '<div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">لا توجد مباريات. اضغط تحديث.</div>';
+                    return;
+                }
+                if (filtered.length === 0) {
+                    matchesGrid.innerHTML =
+                        '<div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:40px;">لا توجد نتائج تطابق البحث/الفلتر.</div>';
+                    return;
+                }
+                matchesGrid.innerHTML = filtered.map(m => {
+                    const status = detectMatchStatus(m);
+                    const isLive = status === 'live';
+                    const homeName = detectTeamName(m, 'home');
+                    const awayName = detectTeamName(m, 'away');
+                    const homeLogo = detectTeamLogo(m, 'home');
+                    const awayLogo = detectTeamLogo(m, 'away');
+                    const score = detectScore(m);
+                    const tournament = detectTournament(m);
+                    const matchTime = detectMatchTime(m);
+                    const matchId = detectMatchId(m);
+                    const cardClass = isLive ? 'match-card live-card' : 'match-card';
+                    const liveBadge = isLive ? '<div class="live-badge">🔴 LIVE</div>' : '';
+                    let statusBadge = '';
+                    if (status === 'live') statusBadge = '<span class="badge badge-live">🔴 مباشر</span>';
+                    else if (status === 'upcoming') statusBadge = '<span class="badge badge-upcoming">🕐 قادمة</span>';
+                    else if (status === 'finished') statusBadge = '<span class="badge badge-finished">✅ انتهت</span>';
+                    else statusBadge = '<span class="badge badge-unknown">❓ غير معروف</span>';
+
+                    return `
+                <div class="${cardClass}" data-match-id="${matchId || ''}" onclick="window._openMatchDetail('${matchId || ''}')">
+                  ${liveBadge}
+                  <div class="match-teams">
+                    ${homeLogo ? `<img src="${homeLogo}" alt="" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;border-radius:50%;background:#1e2430;display:flex;align-items:center;justify-content:center;font-size:0.7em;">🏠</div>'}
+                    <span>${escapeHtml(homeName)}</span>
+                    ${score ? `<span class="match-score">${escapeHtml(score)}</span>` : '<span class="match-score" style="font-size:1.2em;">VS</span>'}
+                    <span>${escapeHtml(awayName)}</span>
+                    ${awayLogo ? `<img src="${awayLogo}" alt="" onerror="this.style.display='none'">` : '<div style="width:44px;height:44px;border-radius:50%;background:#1e2430;display:flex;align-items:center;justify-content:center;font-size:0.7em;">🏠</div>'}
+                  </div>
+                  <div class="match-meta">
+                    ${statusBadge}
+                    <span>🏆 ${escapeHtml(tournament)}</span>
+                    ${matchTime ? `<span>🕒 ${escapeHtml(matchTime)}</span>` : ''}
+                    ${matchId ? `<span>🆔 ${escapeHtml(matchId)}</span>` : ''}
+                  </div>
+                  <div class="match-actions">
+                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();window._testStream('${matchId || ''}')">🎥 اختبار البث</button>
+                    <button class="btn btn-sm" onclick="event.stopPropagation();window._openMatchDetail('${matchId || ''}')">📋 تفاصيل</button>
+                  </div>
+                </div>`;
+                }).join('');
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // --- Modal functions ---
+            function openModal(html) {
+                modalContent.innerHTML = html;
+                modalOverlay.style.display = 'flex';
+            }
+
+            function closeModal() {
+                modalOverlay.style.display = 'none';
+                // Stop any video
+                const video = modalContent.querySelector('video');
+                if (video) {
+                    video.pause();
+                    video.removeAttribute('src');
+                    video.load();
+                }
+                // Destroy hls instance if any
+                if (window._hlsInstance) {
+                    window._hlsInstance.destroy();
+                    window._hlsInstance = null;
+                }
+            }
+
+            window._openMatchDetail = function(matchId) {
+                const match = allMatchesData.find(m => detectMatchId(m) === matchId);
+                if (!match) {
+                    showToast('لم يتم العثور على المباراة.', 3000);
+                    return;
+                }
+                const status = detectMatchStatus(match);
+                const homeName = detectTeamName(match, 'home');
+                const awayName = detectTeamName(match, 'away');
+                const score = detectScore(match);
+                const tournament = detectTournament(match);
+                const matchTime = detectMatchTime(match);
+                let statusLabel = 'غير معروف';
+                if (status === 'live') statusLabel = '🔴 مباشر الآن';
+                else if (status === 'upcoming') statusLabel = '🕐 قادمة';
+                else if (status === 'finished') statusLabel = '✅ انتهت';
+                const html = `
+              <button class="modal-close" onclick="window._closeModal()">✕</button>
+              <h3>📋 تفاصيل المباراة</h3>
+              <div style="text-align:center;margin:16px 0;">
+                <h2>${escapeHtml(homeName)} ${score ? escapeHtml(score) : 'VS'} ${escapeHtml(awayName)}</h2>
+                <p>🏆 ${escapeHtml(tournament)}</p>
+                <p>📅 ${matchTime || 'غير متوفر'} | الحالة: ${statusLabel}</p>
+                <p>🆔 ID: <strong>${matchId || 'غير متوفر'}</strong></p>
+              </div>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="window._testStream('${matchId || ''}')">🎥 الحصول على رابط البث</button>
+                <button class="btn" onclick="window._showLinkJson()">📦 عرض JSON /link</button>
+              </div>
+              <hr>
+              <details><summary>📦 جميع الحقول الخام</summary><pre style="font-size:0.7em;max-height:250px;overflow:auto;background:#0d1117;padding:10px;border-radius:8px;">${JSON.stringify(match,null,2)}</pre></details>
             `;
-
-            div.querySelector("button").onclick =
-                () => getStream(id);
-
-            matchesDiv.appendChild(div);
-
-        });
-
-    } catch (error) {
-
-        matchesDiv.innerHTML =
-            "❌ خطأ: " + error.message;
-
-        showLog(error.stack || error.message);
-    }
-}
-
-
-async function getStream(id) {
-
-    if (!id) {
-        alert("لا يوجد ID للمباراة");
-        return;
-    }
-
-    log.textContent =
-        "⏳ جاري الحصول على رابط البث...";
-
-    try {
-
-        const response = await fetch(
-            "https://" + HOST + "/link/" +
-            encodeURIComponent(id),
-            { headers }
-        );
-
-        const text = await response.text();
-
-        console.log("STREAM RESPONSE:", text);
-
-        let data;
-
-        try {
-            data = JSON.parse(text);
-        } catch {
-            data = text;
-        }
-
-        showLog(data);
-
-        const streamUrl = findUrl(data);
-
-        if (!streamUrl) {
-
-            alert(
-                "❌ لم يتم العثور على رابط بث في الرد"
-            );
-
-            return;
-        }
-
-        console.log("STREAM URL:", streamUrl);
-
-        playStream(streamUrl);
-
-    } catch (error) {
-
-        showLog(error.stack || error.message);
-
-        alert(
-            "❌ فشل الحصول على البث: " +
-            error.message
-        );
-    }
-}
-
-
-function findUrl(data) {
-
-    if (typeof data === "string") {
-
-        if (
-            data.includes(".m3u8") ||
-            data.startsWith("http")
-        ) {
-            return data;
-        }
-
-        return null;
-    }
-
-    if (!data || typeof data !== "object")
-        return null;
-
-    const possibleKeys = [
-        "url",
-        "stream_url",
-        "streamUrl",
-        "link",
-        "stream",
-        "m3u8",
-        "m3u8_url",
-        "play_url",
-        "playUrl"
-    ];
-
-    for (const key of possibleKeys) {
-
-        if (
-            typeof data[key] === "string" &&
-            data[key].startsWith("http")
-        ) {
-            return data[key];
-        }
-    }
-
-    for (const value of Object.values(data)) {
-
-        const result = findUrl(value);
-
-        if (result)
-            return result;
-    }
-
-    return null;
-}
-
-
-function playStream(url) {
-
-    video.pause();
-
-    video.removeAttribute("src");
-
-    if (
-        url.includes(".m3u8") &&
-        Hls.isSupported()
-    ) {
-
-        const hls = new Hls();
-
-        hls.loadSource(url);
-
-        hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-
-            video.play().catch(() => {});
-
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-
-            console.log("HLS ERROR:", data);
-
-        });
-
-    }
-
-    else if (
-        video.canPlayType(
-            "application/vnd.apple.mpegurl"
-        )
-    ) {
-
-        video.src = url;
-
-        video.play().catch(() => {});
-
-    }
-
-    else {
-
-        video.src = url;
-
-        video.play().catch(() => {});
-
-    }
-}
-
-</script>
-
+                openModal(html);
+            };
+
+            window._testStream = async function(matchId) {
+                if (!matchId) {
+                    showToast('⚠️ لم يتم العثور على ID لهذه المباراة.', 4000);
+                    return;
+                }
+                const match = allMatchesData.find(m => detectMatchId(m) === matchId);
+                const homeName = match ? detectTeamName(match, 'home') : '?';
+                const awayName = match ? detectTeamName(match, 'away') : '?';
+                openModal(`
+              <button class="modal-close" onclick="window._closeModal()">✕</button>
+              <h3>🎥 بث المباراة</h3>
+              <p>${escapeHtml(homeName)} VS ${escapeHtml(awayName)} | ID: ${matchId}</p>
+              <div style="text-align:center;padding:30px;"><span class="spinner"></span> جاري جلب رابط البث...</div>
+            `);
+                const responseData = await fetchStreamLink(matchId);
+                if (!responseData) {
+                    modalContent.innerHTML = `
+                <button class="modal-close" onclick="window._closeModal()">✕</button>
+                <h3>🎥 فشل جلب البث</h3>
+                <p class="text-red">تعذر الحصول على رابط البث. تحقق من Diagnostics و JSON الخام.</p>
+                <button class="btn" onclick="window._showLinkJson()">📦 عرض JSON /link</button>
+                <button class="btn" onclick="window._closeModal()">إغلاق</button>
+              `;
+                    return;
+                }
+                const streamUrl = detectStreamUrl(responseData);
+                const quality = detectStreamQuality(responseData);
+                const source = detectStreamSource(responseData);
+                if (!streamUrl) {
+                    modalContent.innerHTML = `
+                <button class="modal-close" onclick="window._closeModal()">✕</button>
+                <h3>🎥 لم يتم العثور على رابط بث</h3>
+                <p>الاستجابة لا تحتوي على رابط بث صالح. راجع JSON الخام.</p>
+                <div class="stream-link-box">لا يوجد رابط</div>
+                <button class="btn" onclick="window._showLinkJson()">📦 عرض JSON /link</button>
+                <button class="btn" onclick="window._closeModal()">إغلاق</button>
+              `;
+                    return;
+                }
+                const isHls = isHlsCandidate(streamUrl);
+                const html = `
+              <button class="modal-close" onclick="window._closeModal()">✕</button>
+              <h3>🎥 بث المباراة</h3>
+              <p><strong>${escapeHtml(homeName)} VS ${escapeHtml(awayName)}</strong></p>
+              <p>الحالة: ${isHls ? 'HLS/M3U8 مرشح' : 'رابط مباشر'} | الجودة: ${escapeHtml(quality)} | المصدر: ${escapeHtml(source)}</p>
+              <div class="stream-link-box">${escapeHtml(streamUrl)}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;">
+                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${streamUrl.replace(/'/g, "\\'")}').then(()=>window._showToast('✅ تم النسخ'))">📋 نسخ الرابط</button>
+                <button class="btn btn-sm" onclick="window.open('${streamUrl.replace(/'/g, "\\'")}', '_blank')">🔗 فتح في تبويب جديد</button>
+              </div>
+              <div id="videoPlayerContainer" style="margin-top:12px;">
+                <video id="streamVideo" controls style="width:100%;border-radius:12px;background:#000;" playsinline></video>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <button class="btn btn-sm btn-primary" id="playBtn">▶️ تشغيل</button>
+                  <button class="btn btn-sm" id="stopBtn">⏹ إيقاف</button>
+                </div>
+                <p id="videoError" style="color:var(--red);margin-top:8px;display:none;"></p>
+              </div>
+              <details style="margin-top:12px;"><summary>📦 JSON الخام</summary><pre style="font-size:0.7em;max-height:200px;overflow:auto;background:#0d1117;padding:10px;border-radius:8px;">${JSON.stringify(responseData,null,2)}</pre></details>
+            `;
+                modalContent.innerHTML = html;
+                // Setup video player after DOM update
+                setTimeout(() => setupVideoPlayer(streamUrl, isHls), 200);
+            };
+
+            function setupVideoPlayer(streamUrl, isHls) {
+                const video = document.getElementById('streamVideo');
+                const playBtn = document.getElementById('playBtn');
+                const stopBtn = document.getElementById('stopBtn');
+                const errorP = document.getElementById('videoError');
+                if (!video) return;
+                // Destroy previous instance
+                if (window._hlsInstance) {
+                    window._hlsInstance.destroy();
+                    window._hlsInstance = null;
+                }
+                video.removeAttribute('src');
+                video.load();
+                errorP.style.display = 'none';
+
+                function showError(msg) {
+                    errorP.textContent = '❌ ' + msg;
+                    errorP.style.display = 'block';
+                }
+
+                playBtn.onclick = () => {
+                    errorP.style.display = 'none';
+                    if (isHls && Hls.isSupported()) {
+                        if (window._hlsInstance) window._hlsInstance.destroy();
+                        const hls = new Hls({
+                            debug: false,
+                            enableWorker: true,
+                            lowLatencyMode: true,
+                        });
+                        window._hlsInstance = hls;
+                        hls.loadSource(streamUrl);
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            video.play().catch(e => showError('فشل التشغيل: ' + e.message));
+                        });
+                        hls.on(Hls.Events.ERROR, (event, data) => {
+                            if (data.fatal) {
+                                showError('خطأ HLS فادح: ' + data.type + ' - ' + (data.details || ''));
+                                hls.destroy();
+                                window._hlsInstance = null;
+                            }
+                        });
+                    } else if (isHls && !Hls.isSupported()) {
+                        // Try native HLS (Safari)
+                        video.src = streamUrl;
+                        video.play().catch(e => showError('فشل التشغيل (ربما لا يدعم المتصفح HLS): ' + e.message));
+                    } else {
+                        video.src = streamUrl;
+                        video.play().catch(e => showError('فشل التشغيل: ' + e.message));
+                    }
+                };
+
+                stopBtn.onclick = () => {
+                    video.pause();
+                    if (window._hlsInstance) {
+                        window._hlsInstance.destroy();
+                        window._hlsInstance = null;
+                    }
+                    video.removeAttribute('src');
+                    video.load();
+                };
+
+                video.onerror = () => {
+                    showError('فشل تحميل الفيديو. الرابط قد يكون غير صالح أو لا يدعمه المتصفح.');
+                };
+            }
+
+            window._closeModal = function() {
+                closeModal();
+            };
+            window._showToast = function(msg) {
+                showToast(msg);
+            };
+            window._showLinkJson = function() {
+                if (lastLinkResponse) {
+                    jsonViewer.textContent = JSON.stringify(lastLinkResponse, null, 2);
+                    showToast('✅ تم عرض JSON /link/{id}', 2000);
+                } else {
+                    showToast('لا يوجد بيانات /link بعد.', 3000);
+                }
+            };
+
+            // --- Event Listeners ---
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === modalOverlay) closeModal();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modalOverlay.style.display === 'flex') closeModal();
+            });
+
+            saveKeyBtn.addEventListener('click', () => {
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    rapidApiKey = key;
+                    localStorage.setItem('fb_stream_key', key);
+                    updateKeyStatus();
+                    showToast('✅ تم حفظ المفتاح في localStorage.', 2000);
+                }
+            });
+
+            testConnBtn.addEventListener('click', async () => {
+                const key = apiKeyInput.value.trim();
+                if (!key && !rapidApiKey) {
+                    showToast('🔑 الرجاء إدخال المفتاح أولاً.', 3000);
+                    return;
+                }
+                if (key) {
+                    rapidApiKey = key;
+                    localStorage.setItem('fb_stream_key', key);
+                    updateKeyStatus();
+                }
+                showToast('🔌 جاري اختبار الاتصال...', 2000);
+                await fetchAllMatches();
+            });
+
+            refreshBtn.addEventListener('click', async () => {
+                if (isRefreshing) {
+                    showToast('⏳ الطلب السابق ما زال قيد التنفيذ...', 2000);
+                    return;
+                }
+                await fetchAllMatches();
+            });
+
+            searchInput.addEventListener('input', renderMatches);
+            filterStatus.addEventListener('change', renderMatches);
+            sortBy.addEventListener('change', renderMatches);
+
+            autoRefreshSelect.addEventListener('change', () => {
+                stopAutoRefresh();
+                const val = autoRefreshSelect.value;
+                if (val !== 'off') {
+                    autoRefreshSeconds = parseInt(val);
+                    startAutoRefresh();
+                    showToast(`🔄 تم تفعيل التحديث التلقائي كل ${autoRefreshSeconds} ثانية.`, 2500);
+                }
+            });
+
+            function startAutoRefresh() {
+                stopAutoRefresh();
+                if (autoRefreshSeconds && autoRefreshSeconds > 0) {
+                    autoRefreshInterval = setInterval(() => {
+                        if (!rateLimitActive && !isRefreshing) {
+                            fetchAllMatches();
+                        }
+                    }, autoRefreshSeconds * 1000);
+                }
+            }
+
+            function stopAutoRefresh() {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+
+            // JSON viewer buttons
+            document.getElementById('showAllMatchJson').addEventListener('click', () => {
+                if (lastAllMatchResponse) {
+                    jsonViewer.textContent = JSON.stringify(lastAllMatchResponse, null, 2);
+                    showToast('✅ تم عرض JSON /all-match', 2000);
+                } else {
+                    showToast('لا يوجد بيانات /all-match بعد.', 3000);
+                }
+            });
+            document.getElementById('showLinkJson').addEventListener('click', () => {
+                if (lastLinkResponse) {
+                    jsonViewer.textContent = JSON.stringify(lastLinkResponse, null, 2);
+                    showToast('✅ تم عرض JSON /link/{id}', 2000);
+                } else {
+                    showToast('لا يوجد بيانات /link بعد.', 3000);
+                }
+            });
+            document.getElementById('copyJsonBtn').addEventListener('click', () => {
+                const text = jsonViewer.textContent;
+                if (text && text !== 'لا يوجد بيانات بعد. اضغط على زر لعرض JSON.') {
+                    navigator.clipboard.writeText(text).then(() => showToast('✅ تم نسخ JSON', 2000));
+                } else {
+                    showToast('لا يوجد JSON لنسخه.', 2000);
+                }
+            });
+            document.getElementById('clearJsonBtn').addEventListener('click', () => {
+                jsonViewer.textContent = 'لا يوجد بيانات بعد. اضغط على زر لعرض JSON.';
+                showToast('🗑 تم مسح العارض.', 1500);
+            });
+
+            // --- Initial auto-fetch ---
+            if (rapidApiKey) {
+                updateKeyStatus();
+                // Auto fetch on load with small delay
+                setTimeout(() => {
+                    if (!isRefreshing) fetchAllMatches();
+                }, 600);
+            } else {
+                updateKeyStatus();
+                updateApiStatusBadge('error');
+                statApiStatus.querySelector('.label').textContent = 'أدخل المفتاح';
+            }
+
+            // --- Expose for inline onclick ---
+            window._openMatchDetail = window._openMatchDetail;
+            window._testStream = window._testStream;
+            window._closeModal = window._closeModal;
+            window._showToast = window._showToast;
+            window._showLinkJson = window._showLinkJson;
+
+        })();
+    </script>
 </body>
 </html>
